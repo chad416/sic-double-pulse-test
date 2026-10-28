@@ -1,0 +1,24 @@
+# Vendor material: onsemi SPICE models and PDFs are NOT redistributable here.
+# Fetch them with `python -m dpt.fetch_models` (see README, "How to reproduce").
+third_party/onsemi/*
+!third_party/onsemi/README.md
+!third_party/onsemi/SHA256SUMS
+third_party/docs/*
+!third_party/docs/README.md
+
+# Local simulator binaries
+tools/
+
+# Simulation scratch / cache (results/*.csv and docs/figures are committed)
+build/
+*.raw
+*.log
+*.op.raw
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
