@@ -58,9 +58,9 @@ updates its models.
   separate Rg,on/Rg,off via steering diodes when they differ. The free-wheeling device
   is held off through the same Rg,off, as in a half-bridge with identical drivers. An
   Rg,off sweep therefore also changes how hard the free-wheeler's gate is held during the
-  DUT turn-on, so the Rg,off choice is judged on Eon + Eoff + Err, not Eoff alone. The *first*, zero-current
-  turn-on uses a 50 ns edge: it is not measured, and the softer edge lets the solver start
-  with a much smaller convergence aid (section 6).
+  DUT turn-on, so the Rg,off choice is judged on Eon + Eoff + Err, not Eoff alone. The
+  *first*, zero-current turn-on uses a 50 ns edge: it is not measured, and the softer edge
+  lets the solver start with a much smaller convergence aid (section 6).
 * **Strays**: one external power-loop inductance `Lloop`, split half above the high side,
   half below the low side. Package inductances are inside the onsemi sub-circuit.
   Non-Kelvin mode adds `Lcs` between the power-source pin and the driver return.
@@ -73,8 +73,8 @@ updates its models.
   reproduces the datasheet RDS(on) at 25 °C and 175 °C within 3 %.
 * **Datasheet loop inductance is unknown**: onsemi does not publish its test-board
   stray inductance, and Eon depends strongly on it (a larger loop drops more voltage
-  during di/dt). Validation is therefore shown over a 10 nH to 50 nH bracket; 30 nH, typical of
-  a discrete TO-247 DPT board, is the nominal value for the sweeps.
+  during di/dt). Validation is therefore shown over a 10 nH to 50 nH bracket; 30 nH,
+  typical of a discrete TO-247 DPT board, is the nominal value for the sweeps.
 
 ## 5. Model sanity checks before trusting any switching result
 
@@ -86,7 +86,7 @@ updates its models.
 
 The 1200 V model passes (19 ns). The 650 V model reproduces RDS(on) but takes **~600 ns**
 to turn on. Its gate terminal reaches 18 V within 50 ns with zero gate current, yet the
-channel stays off. The delay is unchanged with 0 V instead of −3 V off-bias, +22 V drive,
+channel stays off. In diagnostic runs (not part of `run_all`) the delay was unchanged with 0 V instead of −3 V off-bias, +22 V drive,
 either source-pin assignment, the Normal or Alternate solver, and with or without the
 convergence aid. It is not physical (datasheet td(on) = 8.8 ns), so the 650 V part is
 excluded. This is an open item to report to the model contacts listed in the library
@@ -105,7 +105,7 @@ every node to ground, a common LTspice trick) runs in ~20 s, and turn-off matche
 datasheet well. Turn-on, however, was 15× slower than the converged result (current rise
 time 81 ns vs 5.4 ns) and Eon about 5.5× the datasheet value.
 
-What it was **not**: solver tolerances (reltol 1e-4, Gear integration: identical),
+What it was **not** (diagnostic runs, not part of `run_all`): solver tolerances (reltol 1e-4, Gear integration: identical),
 gate drive (a 0.1 Ω drive gave the same 0.4 A/ns), the body diode (same with an ideal
 Schottky), pin order, or the 6-pin thermal variant. A resistive-load test switched
 normally.
