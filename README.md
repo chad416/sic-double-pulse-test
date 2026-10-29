@@ -154,15 +154,16 @@ same batch mode, but this pipeline has not been run there.
 2. Create the environment and install the pinned dependencies.
 
    ```powershell
-   # Windows PowerShell
+   # Windows PowerShell (if scripts are blocked, first run
+   # Set-ExecutionPolicy -Scope Process RemoteSigned)
    py -3.12 -m venv .venv
    .venv\Scripts\Activate.ps1
    ```
 
    ```bash
-   # bash (Git Bash: source .venv/Scripts/activate)
-   python3.12 -m venv .venv
-   source .venv/bin/activate
+   # Git Bash on Windows; on macOS use python3.12 and .venv/bin/activate
+   py -3.12 -m venv .venv
+   source .venv/Scripts/activate
    ```
 
    Then, in either shell:

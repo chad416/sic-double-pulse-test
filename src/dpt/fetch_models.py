@@ -103,7 +103,7 @@ def ensure(z: ModelZip, root: Path, download: bool) -> bool:
                 if not str(target).startswith(str(out.resolve())):
                     raise RuntimeError(f"unsafe path in {zpath.name}: {member}")
             zf.extractall(out)
-        print(f"unpacked {zpath.name} -> {out}")
+        print(f"unpacked {zpath.name} -> {out.parent.name}/{out.name}/")
     return True
 
 
