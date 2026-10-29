@@ -185,8 +185,12 @@ class TurnOffResult:
     f_ring: float  # Hz
     zeta_ring: float
     vgs_hs_min: float  # V, most negative freewheeling gate excursion
+    vgs_max: float  # V, DUT gate extremes in the window (rating / oscillation check)
+    vgs_min: float  # V
     td_off: float  # s, 90 % vgs -> 90 % id
     tf: float  # s, 90 % -> 10 % id
+    td_off_v: float  # s, 90 % vgs -> 10 % vds (voltage-based, JEDEC-style)
+    tf_v: float  # s, 10 % -> 90 % vds
 
 
 @dataclass
@@ -198,11 +202,16 @@ class TurnOnResult:
     di_dt: float  # A/s, 20-80 %
     id_peak: float  # A
     vgs_hs_max: float  # V, highest freewheeling gate excursion (false turn-on risk)
+    vds_hs_peak: float  # V, freewheeling-device voltage peak (diode-recovery overshoot)
+    vgs_max: float  # V, DUT gate extremes in the window (rating / oscillation check)
+    vgs_min: float  # V
     e_rr: float  # J, freewheeling-diode reverse-recovery energy
     q_rr: float  # C
     i_rrm: float  # A
     td_on: float  # s, 10 % vgs -> 10 % id
     tr: float  # s, 10 % -> 90 % id
+    td_on_v: float  # s, 10 % vgs -> 90 % vds (voltage-based, JEDEC-style)
+    tr_v: float  # s, 90 % -> 10 % vds
 
 
 def extract_turn_off(
@@ -227,6 +236,8 @@ def extract_turn_off(
     t_i90 = crossing_time(t, w.id, 0.9 * i_load, "falling", t0, t_stop)
     t_i10 = crossing_time(t, w.id, 0.1 * i_load, "falling", t_i90, t_stop)
     t1 = crossing_time(t, w.id, th.id_off_end * i_load, "falling", t_i90, t_stop)
+    t_v10 = crossing_time(t, w.vds, 0.1 * vbus, "rising", t0, t_stop)
+    t_v90 = crossing_time(t, w.vds, 0.9 * vbus, "rising", t_v10, t_stop)
     p = w.vds * w.id
     e_off = integrate(t, p, t0, t1)
 
@@ -249,8 +260,12 @@ def extract_turn_off(
         f_ring=f_ring,
         zeta_ring=zeta,
         vgs_hs_min=float(np.min(seg.vgs_hs)),
+        vgs_max=float(np.max(seg.vgs)),
+        vgs_min=float(np.min(seg.vgs)),
         td_off=t_i90 - t0,
         tf=t_i10 - t_i90,
+        td_off_v=t_v10 - t0,
+        tf_v=t_v90 - t_v10,
     )
 
 
@@ -277,6 +292,8 @@ def extract_turn_on(
     t_i10 = crossing_time(t, w.id, 0.1 * i_load, "rising", t0, t_stop)
     t_i90 = crossing_time(t, w.id, 0.9 * i_load, "rising", t_i10, t_stop)
     t1 = crossing_time(t, w.vds, th.vds_on_end * vbus, "falling", t0, t_stop)
+    t_v90 = crossing_time(t, w.vds, 0.9 * vbus, "falling", t0, t_stop)
+    t_v10 = crossing_time(t, w.vds, 0.1 * vbus, "falling", t_v90, t_stop)
     e_on = integrate(t, w.vds * w.id, t0, t1)
 
     di_dt = _slope(t, w.id, th.slope_low * i_load, th.slope_high * i_load, "rising", t0, t_stop)
@@ -303,11 +320,16 @@ def extract_turn_on(
         di_dt=di_dt,
         id_peak=float(np.max(seg.id)),
         vgs_hs_max=float(np.max(seg.vgs_hs)),
+        vds_hs_peak=float(np.max(seg.vds_hs)),
+        vgs_max=float(np.max(seg.vgs)),
+        vgs_min=float(np.min(seg.vgs)),
         e_rr=e_rr,
         q_rr=q_rr,
         i_rrm=i_rrm,
         td_on=t_i10 - t0,
         tr=t_i90 - t_i10,
+        td_on_v=t_v90 - t0,
+        tr_v=t_v10 - t_v90,
     )
 
 

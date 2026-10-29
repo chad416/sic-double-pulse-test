@@ -90,6 +90,8 @@ def test_turn_off_energy_slopes_and_times() -> None:
     assert r.di_dt == pytest.approx(-IL / (10 * NS), rel=5e-3)
     assert r.td_off == pytest.approx((151 - 102) * NS, rel=5e-3)
     assert r.tf == pytest.approx(8 * NS, rel=5e-3)
+    assert r.td_off_v == pytest.approx((132 - 102) * NS, rel=5e-3)
+    assert r.tf_v == pytest.approx(16 * NS, rel=5e-3)
 
 
 def test_turn_off_overshoot_and_ringing() -> None:
@@ -149,10 +151,13 @@ def test_turn_on_energy_recovery_and_bounce() -> None:
     assert r.e_rr == pytest.approx(_dense_reference(p_rr, 140 * NS, 154.8 * NS), rel=1e-2)
     assert r.q_rr == pytest.approx(0.5 * 10.0 * 15 * NS * (1 - 0.02**2), rel=1e-2)
     assert r.vgs_hs_max == pytest.approx(VGS_OFF + 2.0, abs=0.02)
+    assert r.vds_hs_peak == pytest.approx(V, rel=1e-3)
     assert r.di_dt == pytest.approx(IL / (10 * NS), rel=5e-3)
     assert r.dv_dt == pytest.approx(-V / (20 * NS), rel=5e-3)
     assert r.td_on == pytest.approx((131 - 102) * NS, rel=5e-3)
     assert r.tr == pytest.approx(8 * NS, rel=5e-3)
+    assert r.td_on_v == pytest.approx((142 - 102) * NS, rel=5e-3)
+    assert r.tr_v == pytest.approx(16 * NS, rel=5e-3)
 
 
 def test_window_thresholds_are_respected() -> None:

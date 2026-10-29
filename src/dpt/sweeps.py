@@ -13,7 +13,13 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-from dpt.extract import ExtractionError, as_dict, extract_turn_off, extract_turn_on
+from dpt.extract import (
+    ExtractionError,
+    as_dict,
+    crossing_time,
+    extract_turn_off,
+    extract_turn_on,
+)
 from dpt.ltspice import SimResult, SimulationError, simulate_robust
 from dpt.netlist import DPTConfig
 
@@ -61,7 +67,11 @@ def metrics_from(sim: SimResult) -> dict[str, float]:
     """Extract all turn-off / turn-on metrics of one finished simulation."""
     c = sim.cfg
     w = sim.waveforms()
-    i_off = sim.load_current_at(c.t_turn_off)
+    # Switched currents: at turn-off the load current when vds starts to rise (the
+    # device keeps conducting through its turn-off delay); at turn-on the free-wheeling
+    # current at the gate command.
+    t_v10 = crossing_time(w.t, w.vds, 0.1 * c.vbus, "rising", c.t_turn_off)
+    i_off = sim.load_current_at(t_v10)
     i_on = sim.load_current_at(c.t_turn_on)
     off = extract_turn_off(w, c.t_turn_off, c.vbus, i_off, c.vgs_on, c.vgs_off)
     on = extract_turn_on(w, c.t_turn_on, c.vbus, i_on, c.vgs_on, c.vgs_off)
@@ -70,6 +80,11 @@ def metrics_from(sim: SimResult) -> dict[str, float]:
     m.update({f"on_{k}": v for k, v in as_dict(on).items()})
     m["e_ts"] = m["off_e_off"] + m["on_e_on"]
     m["vgs_hs_margin"] = c.device.vth_min - m["on_vgs_hs_max"]
+    # A gate swing outside the absolute ratings means the stage oscillates: the loss
+    # numbers of such a run describe an unusable design, not a loss to optimise.
+    vg_hi = max(m["on_vgs_max"], m["off_vgs_max"])
+    vg_lo = min(m["on_vgs_min"], m["off_vgs_min"])
+    m["gate_ok"] = float(vg_hi <= c.device.vgs_abs_max and vg_lo >= c.device.vgs_abs_min)
     return m
 
 

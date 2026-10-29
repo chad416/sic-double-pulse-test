@@ -29,7 +29,7 @@ def test_pin_order_follows_device_definition() -> None:
 
 def test_first_pulse_width_charges_inductor_to_target() -> None:
     cfg = DPTConfig(device=NTH4L022N120M3S, vbus=800, i_load=40, l_load=20e-6)
-    assert cfg.t_pulse1 == pytest.approx(1e-6)
+    assert cfg.t_pulse1 == pytest.approx(1e-6 - cfg.t_delay_comp)
     assert cfg.t_turn_on - cfg.t_turn_off == pytest.approx(cfg.t_off + cfg.t_edge_drv)
     pwl = _line(render(cfg, ROOT), "Vdrv").split("PWL(")[1].rstrip(")").split()
     pts = [(float(pwl[k]), float(pwl[k + 1])) for k in range(0, len(pwl), 2)]
@@ -45,9 +45,9 @@ def test_first_pulse_width_charges_inductor_to_target() -> None:
 def test_kelvin_and_common_source_modes() -> None:
     base = DPTConfig(device=NTH4L022N120M3S)
     kelvin = render(base, ROOT)
-    assert "Vdrv drv dut_ks" in kelvin
+    assert "Vdrv drv0 dut_ks" in kelvin
     non_kelvin = render(base.with_(kelvin=False, l_cs=5e-9), ROOT)
-    assert "Vdrv drv cs" in non_kelvin
+    assert "Vdrv drv0 cs" in non_kelvin
     assert _line(non_kelvin, "Lcs").split()[1:3] == ["dut_s", "cs"]
 
 

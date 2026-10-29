@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 460" font-family="DejaVu Sans, Arial, sans-serif" font-size="13">
+  <title>Double-pulse test circuit used in the simulation</title>
+  <rect width="760" height="460" fill="#fcfcfb"/>
+  <g stroke="#0b0b0b" stroke-width="2" fill="none">
+    <!-- DC link source -->
+    <line x1="80" y1="70" x2="80" y2="190"/>
+    <circle cx="80" cy="220" r="26"/>
+    <line x1="80" y1="246" x2="80" y2="400"/>
+    <!-- Cbus -->
+    <line x1="80" y1="70" x2="170" y2="70"/>
+    <line x1="170" y1="70" x2="170" y2="205"/>
+    <line x1="150" y1="205" x2="190" y2="205"/>
+    <line x1="150" y1="217" x2="190" y2="217"/>
+    <line x1="170" y1="217" x2="170" y2="400"/>
+    <!-- Lloop/2 top -->
+    <path d="M170,70 h30 a8,8 0 0 1 16,0 a8,8 0 0 1 16,0 a8,8 0 0 1 16,0 h82"/>
+    <!-- high side node -->
+    <line x1="330" y1="70" x2="470" y2="70"/>
+    <!-- HS MOSFET at x=470 -->
+    <line x1="470" y1="70" x2="470" y2="110"/>
+    <line x1="458" y1="110" x2="458" y2="150"/>
+    <line x1="458" y1="110" x2="470" y2="110"/>
+    <line x1="458" y1="150" x2="470" y2="150"/>
+    <line x1="450" y1="112" x2="450" y2="148"/>
+    <line x1="470" y1="150" x2="470" y2="230"/>
+    <line x1="420" y1="130" x2="450" y2="130"/>
+    <!-- HS gate hold-off source -->
+    <line x1="420" y1="130" x2="392" y2="130"/>
+    <circle cx="380" cy="130" r="12"/>
+    <!-- body diode -->
+    <path d="M500,130 l-12,20 h24 z" fill="#0b0b0b"/>
+    <line x1="488" y1="128" x2="512" y2="128"/>
+    <line x1="470" y1="100" x2="500" y2="100"/>
+    <line x1="500" y1="100" x2="500" y2="128"/>
+    <line x1="500" y1="150" x2="500" y2="180"/>
+    <line x1="500" y1="180" x2="470" y2="180"/>
+    <!-- Load inductor across HS -->
+    <line x1="470" y1="70" x2="680" y2="70"/>
+    <line x1="680" y1="70" x2="680" y2="100"/>
+    <path d="M680,100 a8,8 0 0 1 0,16 a8,8 0 0 1 0,16 a8,8 0 0 1 0,16 a8,8 0 0 1 0,16"/>
+    <line x1="680" y1="164" x2="680" y2="230"/>
+    <line x1="470" y1="230" x2="680" y2="230"/>
+    <!-- LS MOSFET (DUT) -->
+    <line x1="470" y1="230" x2="470" y2="270"/>
+    <line x1="458" y1="270" x2="458" y2="310"/>
+    <line x1="458" y1="270" x2="470" y2="270"/>
+    <line x1="458" y1="310" x2="470" y2="310"/>
+    <line x1="450" y1="272" x2="450" y2="308"/>
+    <line x1="470" y1="310" x2="470" y2="340"/>
+    <!-- Kelvin source pin -->
+    <line x1="458" y1="310" x2="440" y2="330"/>
+    <line x1="440" y1="330" x2="360" y2="330"/>
+    <!-- gate resistor -->
+    <line x1="450" y1="290" x2="430" y2="290"/>
+    <rect x="390" y="282" width="40" height="16"/>
+    <line x1="390" y1="290" x2="360" y2="290"/>
+    <!-- driver source -->
+    <circle cx="340" cy="310" r="22"/>
+    <line x1="340" y1="288" x2="360" y2="290"/>
+    <line x1="340" y1="332" x2="360" y2="330"/>
+    <!-- Lloop/2 bottom -->
+    <line x1="470" y1="340" x2="470" y2="350"/>
+    <path d="M470,350 a8,8 0 0 1 0,16 a8,8 0 0 1 0,16 a8,8 0 0 1 0,16"/>
+    <line x1="470" y1="398" x2="470" y2="400"/>
+    <line x1="80" y1="400" x2="470" y2="400"/>
+  </g>
+  <!-- labels -->
+  <g fill="#0b0b0b">
+    <text x="90" y="180">Vbus</text>
+    <text x="90" y="268" fill="#52514e">400–800 V</text>
+    <text x="196" y="215">Cbus</text>
+    <text x="196" y="232" fill="#52514e">10 µF</text>
+    <text x="200" y="55">Lloop / 2</text>
+    <text x="210" y="112">Free-wheeling device (high side):</text>
+    <text x="210" y="129" fill="#52514e">same MOSFET, body diode;</text>
+    <text x="210" y="146" fill="#52514e">gate held at −3 V via Rg,off</text>
+    <text x="696" y="136">Lload</text>
+    <text x="696" y="153" fill="#52514e">100 µH</text>
+    <text x="490" y="285">DUT (low side)</text>
+    <text x="490" y="302" fill="#52514e">onsemi NTH4L022N120M3S</text>
+    <text x="490" y="319" fill="#52514e">TO-247-4L, 4-pin model</text>
+    <text x="378" y="276">Rg,on / Rg,off</text>
+    <text x="250" y="300">−3 / +18 V</text>
+    <text x="250" y="317" fill="#52514e">ideal driver</text>
+    <text x="365" y="350" fill="#52514e">Kelvin source (SS)</text>
+    <text x="488" y="380">Lloop / 2</text>
+    <text x="560" y="248" fill="#52514e">switch node</text>
+    <text x="20" y="430" fill="#52514e" font-size="12">Package inductances are inside the onsemi sub-circuit; Lloop is the external commutation loop only.</text>
+    <text x="20" y="447" fill="#52514e" font-size="12">Non-Kelvin variant: the driver returns to the power-source pin through an extra common-source inductance Lcs.</text>
+  </g>
+</svg>

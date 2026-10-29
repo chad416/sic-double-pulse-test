@@ -8,6 +8,7 @@ series labelled (legend or direct label).
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib
@@ -110,46 +111,54 @@ def switching_waveforms(
     return _save(fig, path)
 
 
-def sweep_panels(
-    x: Sequence[float],
-    panels: Sequence[tuple[str, Sequence[tuple[str, Sequence[float]]]]],
-    xlabel: str,
-    title: str,
-    path: Path,
-    xlog: bool = False,
-    hlines: dict[int, tuple[float, str]] | None = None,
-) -> Path:
-    """Small multiples sharing one x-axis; each panel holds <= 3 labelled series."""
-    n = len(panels)
-    fig, axes = plt.subplots(1, n, figsize=(3.6 * n, 3.4))
-    axes_list = [axes] if n == 1 else list(axes)
-    xs = np.asarray(x, dtype=float)
-    for k, (ax, (ylabel, series)) in enumerate(zip(axes_list, panels, strict=True)):
-        for j, (name, ys) in enumerate(series):
-            ya = np.asarray(ys, dtype=float)
-            ax.plot(xs, ya, color=SERIES[j], marker="o", ms=4.5, label=name)
-            if len(series) > 1:
+@dataclass
+class Panel:
+    """One small-multiple panel: shared x, up to three labelled series."""
+
+    x: Sequence[float]
+    xlabel: str
+    ylabel: str
+    series: Sequence[tuple[str, Sequence[float]]]
+    limit: tuple[float, str] | None = None  # horizontal reference line + label
+    xlog: bool = False
+    title: str = ""
+
+
+def panel_grid(rows: Sequence[Sequence[Panel]], title: str, path: Path) -> Path:
+    """Grid of small multiples; one y-axis per panel, direct labels on multi-series panels."""
+    n_rows, n_cols = len(rows), max(len(r) for r in rows)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(3.7 * n_cols, 3.2 * n_rows), squeeze=False)
+    for i, row in enumerate(rows):
+        for j in range(n_cols):
+            ax = axes[i][j]
+            if j >= len(row):
+                ax.set_visible(False)
+                continue
+            pan = row[j]
+            xs = np.asarray(pan.x, dtype=float)
+            for k, (name, ys) in enumerate(pan.series):
+                ya = np.asarray(ys, dtype=float)
+                ax.plot(xs, ya, color=SERIES[k], marker="o", ms=4.5, label=name)
+            if pan.limit is not None:
+                yv, lab = pan.limit
+                ax.axhline(yv, color=INK_2, lw=1.0, ls="--")
                 ax.annotate(
-                    name,
-                    (xs[-1], ya[-1]),
-                    xytext=(4, 0),
+                    lab,
+                    (0.02, yv),
+                    xycoords=("axes fraction", "data"),
+                    xytext=(0, 3),
                     textcoords="offset points",
-                    fontsize=8,
+                    fontsize=7.5,
                     color=INK_2,
-                    va="center",
                 )
-        if hlines and k in hlines:
-            yv, lab = hlines[k]
-            ax.axhline(yv, color=INK_2, lw=1.0, ls="--")
-            ax.annotate(
-                lab, (xs[0], yv), xytext=(2, 3), textcoords="offset points", fontsize=8, color=INK_2
-            )
-        ax.set_ylabel(ylabel)
-        ax.set_xlabel(xlabel)
-        if xlog:
-            ax.set_xscale("log")
-        if len(series) > 1:
-            ax.legend(loc="best")
+            if pan.xlog:
+                ax.set_xscale("log")
+            ax.set_xlabel(pan.xlabel)
+            ax.set_ylabel(pan.ylabel)
+            if pan.title:
+                ax.set_title(pan.title, fontsize=10)
+            if len(pan.series) > 1:
+                ax.legend(loc="best")
     fig.suptitle(title, fontsize=12, fontweight="bold", color=INK)
     fig.tight_layout()
     return _save(fig, path)

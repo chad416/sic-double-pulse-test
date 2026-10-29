@@ -18,6 +18,8 @@ NTH4L022N120M3S = Device(
     vds_rating=1200.0,
     rg_int=1.5,
     vth_min=2.04,
+    vgs_abs_max=22.0,
+    vgs_abs_min=-10.0,
 )
 
 NTH4L032N065M3S = Device(

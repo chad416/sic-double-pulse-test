@@ -1,0 +1,3 @@
+sha256 of the onsemi ZIPs used for the committed results (also checked by dpt.fetch_models)
+c45a3f596c3addf72f4b29ae4be1c2a2992e704941806a6f49b9b20fd77d1196  onsemi_sicmosfet_1200m3s_ltspice.zip
+e5ffd4043ff3aa5c845420e6078eb6eae0c005ef0c7ad5407cc1bdb9af518d09  onsemi_sicmosfet_650m3s_ltspice.zip

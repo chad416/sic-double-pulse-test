@@ -48,6 +48,8 @@ class Device:
     vds_rating: float  # V
     rg_int: float  # internal gate resistance from the datasheet, Ohm
     vth_min: float  # minimum gate threshold voltage at 25 C, V (false turn-on margin)
+    vgs_abs_max: float = 22.0  # V, absolute maximum gate-source rating
+    vgs_abs_min: float = -10.0  # V
     # Sub-circuit pin order using the roles d, g, s (power source), ks (Kelvin source).
     # The onsemi libraries are not consistent: the 1200 V M3S symbol orders D G S SS,
     # the 650 V M3S symbol orders D G S1 S2 with S1 = driver (Kelvin) source.
@@ -67,6 +69,7 @@ class DPTConfig:
     vgs_on: float = 18.0  # V
     vgs_off: float = -3.0  # V
     t_edge_drv: float = 5e-9  # s, driver output 0-100 % edge of the measured edges
+    l_gate: float = 0.0  # H, gate-loop inductance between driver and gate pin (0 = ideal)
     t_edge_first: float = 50e-9  # s, edge of the first (unmeasured, zero-current) turn-on
     l_loop: float = 30e-9  # H, external power-loop inductance
     l_cs: float = 0.0  # H, extra common-source inductance (non-Kelvin mode only)
@@ -75,7 +78,10 @@ class DPTConfig:
     # condition); "sbd" = generic recovery-free SiC Schottky diode (NOT an onsemi model,
     # used only to separate DUT turn-on from body-diode recovery effects).
     freewheel: str = "body_diode"
-    l_load: float = 20e-6  # H
+    l_load: float = 100e-6  # H
+    # First-pulse shortening for the turn-off delay + soft first edge, so the current
+    # actually switched at turn-off (not at the gate command) is close to i_load.
+    t_delay_comp: float = 60e-9  # s
     c_bus: float = 10e-6  # F
     t_off: float = 1e-6  # s, freewheeling interval between the two pulses
     t_after: float = 0.5e-6  # s, simulated time after the second turn-on
@@ -95,8 +101,8 @@ class DPTConfig:
 
     @property
     def t_pulse1(self) -> float:
-        """First-pulse width that charges the load inductor to ``i_load``."""
-        return self.l_load * self.i_load / self.vbus
+        """First-pulse width that charges the load inductor to ``i_load`` at turn-off."""
+        return self.l_load * self.i_load / self.vbus - self.t_delay_comp
 
     @property
     def t_turn_off(self) -> float:
@@ -221,7 +227,8 @@ def render(cfg: DPTConfig, model_root: Path) -> str:
         f"XLS {_pins(dev, 'dut', 'dut_d')} {dev.subckt}",
         source_path,
         "* --- gate driver (ideal source, double pulse as PWL)",
-        f"Vdrv drv {ls_driver_ref} PWL({pwl_text})",
+        f"Vdrv drv0 {ls_driver_ref} PWL({pwl_text})",
+        (f"Lgate drv0 drv {cfg.l_gate:g} Rser=1m" if cfg.l_gate > 0 else "Rdrv0 drv0 drv 1u"),
         driver,
         f".tran 0 {cfg.t_stop:g}" + (f" 0 {cfg.max_step:g}" if cfg.max_step > 0 else ""),
         ".options plotwinsize=0 " + " ".join(cfg.options) + f" cshunt={cfg.cshunt:g}",
