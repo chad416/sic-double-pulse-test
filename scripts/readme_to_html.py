@@ -1,4 +1,7 @@
-"""Minimal README.md -> HTML renderer (GitHub-like look) for taking report screenshots."""
+"""Minimal Markdown -> HTML renderer (GitHub-like look) for the report screenshots.
+
+python scripts/readme_to_html.py README.md out.html ["## Heading to start from"]
+"""
 
 import html
 import re
@@ -18,14 +21,9 @@ def _data_uri(rel: str) -> str:
 
 def inline(s: str) -> str:
     s = html.escape(s, quote=False)
-    keep = ("dpt_circuit.svg", "waveforms_nominal.png")  # keep the page small for the preview
     s = re.sub(
         r"!\[([^\]]*)\]\(([^)]+)\)",
-        lambda m: (
-            f'<img alt="{m.group(1)}" src="{_data_uri(m.group(2))}">'
-            if m.group(2).endswith(keep)
-            else f"<em>[figure: {m.group(2)}]</em>"
-        ),
+        lambda m: f'<img alt="{m.group(1)}" src="{_data_uri(m.group(2))}">',
         s,
     )
     s = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', s)
@@ -36,7 +34,8 @@ def inline(s: str) -> str:
 
 
 def convert(md: str) -> str:
-    out, lines, i = [], md.splitlines(), 0
+    out: list[str] = []
+    lines, i = md.splitlines(), 0
     while i < len(lines):
         ln = lines[i]
         if ln.startswith("<!--"):
@@ -118,7 +117,10 @@ a{color:#0969da;text-decoration:none}
 """
 
 src, dst = Path(sys.argv[1]), Path(sys.argv[2])
-body = convert(src.read_text(encoding="utf-8"))
+md = src.read_text(encoding="utf-8")
+if len(sys.argv) > 3:
+    md = md[md.index(sys.argv[3]) :]
+body = convert(md)
 dst.write_text(
     f"<!doctype html><html><head><meta charset='utf-8'><title>README</title><style>{CSS}</style>"
     f"</head><body>{body}</body></html>",

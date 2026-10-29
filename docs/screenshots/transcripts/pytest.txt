@@ -1,32 +1,35 @@
 $ python -m pytest -v
 ============================= test session starts =============================
 platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.7.0 -- <repo>\.venv\Scripts\python.exe
+cachedir: .pytest_cache
 rootdir: <repo>
 configfile: pyproject.toml
 testpaths: tests
 plugins: platformdirs-4.14.0
-collecting ... collected 21 items
+collecting ... collected 23 items
 
 tests/test_analysis.py::test_max_x_below_interpolates_first_crossing PASSED [  4%]
-tests/test_analysis.py::test_best_under_constraints PASSED               [  9%]
-tests/test_analysis.py::test_deviation_pct PASSED                        [ 14%]
-tests/test_extract.py::test_crossing_time_interpolates PASSED            [ 19%]
-tests/test_extract.py::test_integrate_partial_window_of_constant PASSED  [ 23%]
-tests/test_extract.py::test_ringing_frequency_and_damping PASSED         [ 28%]
-tests/test_extract.py::test_turn_off_energy_slopes_and_times PASSED      [ 33%]
-tests/test_extract.py::test_turn_off_overshoot_and_ringing PASSED        [ 38%]
-tests/test_extract.py::test_turn_on_energy_recovery_and_bounce PASSED    [ 42%]
-tests/test_extract.py::test_window_thresholds_are_respected PASSED       [ 47%]
-tests/test_extract.py::test_max_slope_finds_fast_segment_of_two_slope_edge PASSED [ 52%]
-tests/test_netlist.py::test_pin_order_follows_device_definition PASSED   [ 57%]
-tests/test_netlist.py::test_first_pulse_width_charges_inductor_to_target PASSED [ 61%]
-tests/test_netlist.py::test_kelvin_and_common_source_modes PASSED        [ 66%]
-tests/test_netlist.py::test_split_gate_resistors_use_steering_diodes PASSED [ 71%]
-tests/test_netlist.py::test_cache_key_changes_with_parameters PASSED     [ 76%]
-tests/test_rawread.py::test_ltspice_float32_payload_and_negative_time PASSED [ 80%]
-tests/test_rawread.py::test_ltspice_double_flag PASSED                   [ 85%]
-tests/test_rawread.py::test_ngspice_ascii_header PASSED                  [ 90%]
+tests/test_analysis.py::test_best_under_constraints PASSED               [  8%]
+tests/test_analysis.py::test_deviation_pct PASSED                        [ 13%]
+tests/test_analysis.py::test_combined_limit_is_min_of_individual_limits PASSED [ 17%]
+tests/test_analysis.py::test_interp_at_handles_decreasing_x_and_range PASSED [ 21%]
+tests/test_extract.py::test_crossing_time_interpolates PASSED            [ 26%]
+tests/test_extract.py::test_integrate_partial_window_of_constant PASSED  [ 30%]
+tests/test_extract.py::test_ringing_frequency_and_damping PASSED         [ 34%]
+tests/test_extract.py::test_turn_off_energy_slopes_and_times PASSED      [ 39%]
+tests/test_extract.py::test_turn_off_overshoot_and_ringing PASSED        [ 43%]
+tests/test_extract.py::test_turn_on_energy_recovery_and_bounce PASSED    [ 47%]
+tests/test_extract.py::test_window_thresholds_are_respected PASSED       [ 52%]
+tests/test_extract.py::test_max_slope_finds_fast_segment_of_two_slope_edge PASSED [ 56%]
+tests/test_netlist.py::test_pin_order_follows_device_definition PASSED   [ 60%]
+tests/test_netlist.py::test_first_pulse_width_charges_inductor_to_target PASSED [ 65%]
+tests/test_netlist.py::test_kelvin_and_common_source_modes PASSED        [ 69%]
+tests/test_netlist.py::test_split_gate_resistors_use_steering_diodes PASSED [ 73%]
+tests/test_netlist.py::test_cache_key_changes_with_parameters PASSED     [ 78%]
+tests/test_rawread.py::test_ltspice_float32_payload_and_negative_time PASSED [ 82%]
+tests/test_rawread.py::test_ltspice_double_flag PASSED                   [ 86%]
+tests/test_rawread.py::test_ngspice_ascii_header PASSED                  [ 91%]
 tests/test_rawread.py::test_truncated_file_keeps_complete_points PASSED  [ 95%]
 tests/test_rawread.py::test_missing_binary_marker PASSED                 [100%]
 
-============================= 21 passed in 1.49s ==============================
+============================= 23 passed in 10.78s =============================

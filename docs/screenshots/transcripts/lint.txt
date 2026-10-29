@@ -1,7 +1,7 @@
-$ ruff check src tests
+$ ruff check src tests scripts
 All checks passed!
-$ black --check src tests
+$ black --check src tests scripts
 All done!
-17 files would be left unchanged.
-$ python -m dpt.fetch_models --check
-exit code: 0
+20 files would be left unchanged.
+$ mypy
+Success: no issues found in 20 source files

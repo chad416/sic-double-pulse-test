@@ -1,19 +1,15 @@
-$ git clone <repo> clone && cd clone        # fresh clone, empty simulation cache
-$ python -m venv .venv && pip install -r requirements-lock.txt && pip install -e . --no-deps
+$ git clone <repo> clone && cd clone            # fresh clone, empty simulation cache
+$ py -3.12 -m venv .venv && source .venv/Scripts/activate
+$ python -m pip install -r requirements-lock.txt && python -m pip install -e . --no-deps
 $ python -m dpt.fetch_models
-unpacked onsemi_sicmosfet_1200m3s_ltspice.zip
-unpacked onsemi_sicmosfet_650m3s_ltspice.zip
+downloaded onsemi_sicmosfet_1200m3s_ltspice.zip
+unpacked onsemi_sicmosfet_1200m3s_ltspice.zip -> onsemi_sicmosfet_1200m3s_ltspice/
+downloaded onsemi_sicmosfet_650m3s_ltspice.zip
+unpacked onsemi_sicmosfet_650m3s_ltspice.zip -> onsemi_sicmosfet_650m3s_ltspice/
 $ python -m pytest -q
-21 passed in 17.04s
-$ ruff check src tests && black --check src tests
-All checks passed!
-$ time python -m dpt.run_all             # every simulation from scratch
-real	7m18.491s
-$ git diff --ignore-cr-at-eol --stat     # regenerated CSVs, figures, README vs committed
-(no output: identical)
-
-$ python -m dpt.run_all                  # in the working repo, all runs served from build/sim cache
-done: results in results/, figures in docs/figures/
-real	1m9.275s
-$ git status --short
-(clean)
+23 passed in 10.78s
+$ time python -m dpt.run_all                 # every simulation from scratch
+done: results in results/, figures in docs/figures/, report in docs/results.md
+real    7m29s
+$ git status --short                         # regenerated results/, docs/ vs committed
+$                                            # (no output: identical)
