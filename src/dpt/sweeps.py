@@ -10,41 +10,33 @@ import csv
 import math
 from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
+
+import numpy as np
 
 from dpt.extract import (
     ExtractionError,
+    Thresholds,
     as_dict,
     crossing_time,
     extract_turn_off,
     extract_turn_on,
 )
-from dpt.ltspice import SimResult, SimulationError, simulate_robust
+from dpt.ltspice import SimResult, SimulationError, simulate_with_retry
 from dpt.netlist import DPTConfig
-
-# Configuration columns written next to the metrics in every CSV row.
-CONFIG_COLUMNS = (
-    "part",
-    "vbus",
-    "i_load",
-    "temp",
-    "rg_on",
-    "rg_off",
-    "l_loop",
-    "l_cs",
-    "kelvin",
-    "key",
-)
 
 
 @dataclass
 class RunRecord:
+    """One configuration and its extracted metrics (empty, with ``error`` set, on failure)."""
+
     cfg: DPTConfig
     metrics: dict[str, float]
     error: str = ""
 
     def row(self) -> dict[str, object]:
+        """CSV row: the configuration columns followed by every metric."""
         c = self.cfg
         out: dict[str, object] = {
             "part": c.device.part,
@@ -55,6 +47,8 @@ class RunRecord:
             "rg_off": c.rg_off,
             "l_loop": c.l_loop,
             "l_cs": c.l_cs,
+            "l_gate": c.l_gate,
+            "vgs_off": c.vgs_off,
             "kelvin": int(c.kelvin),
             "key": c.key(),
         }
@@ -63,22 +57,34 @@ class RunRecord:
         return out
 
 
-def metrics_from(sim: SimResult) -> dict[str, float]:
-    """Extract all turn-off / turn-on metrics of one finished simulation."""
+def metrics_from(
+    sim: SimResult, th: Thresholds | None = None, id_delay: float = 0.0
+) -> dict[str, float]:
+    """Extract all turn-off / turn-on metrics of one finished simulation.
+
+    ``th`` changes the integration / slope thresholds and ``id_delay`` shifts the DUT
+    current trace later in time (a current-probe deskew error); both exist for the
+    error budget and default to the definitions in DESIGN.md.
+    """
     c = sim.cfg
     w = sim.waveforms()
+    if id_delay:
+        w = replace(w, id=np.interp(w.t - id_delay, w.t, w.id))
     # Switched currents: at turn-off the load current when vds starts to rise (the
     # device keeps conducting through its turn-off delay); at turn-on the free-wheeling
     # current at the gate command.
     t_v10 = crossing_time(w.t, w.vds, 0.1 * c.vbus, "rising", c.t_turn_off)
     i_off = sim.load_current_at(t_v10)
     i_on = sim.load_current_at(c.t_turn_on)
-    off = extract_turn_off(w, c.t_turn_off, c.vbus, i_off, c.vgs_on, c.vgs_off)
-    on = extract_turn_on(w, c.t_turn_on, c.vbus, i_on, c.vgs_on, c.vgs_off)
+    off = extract_turn_off(w, c.t_turn_off, c.vbus, i_off, c.vgs_on, c.vgs_off, th)
+    on = extract_turn_on(w, c.t_turn_on, c.vbus, i_on, c.vgs_on, c.vgs_off, th)
     m: dict[str, float] = {"i_off": i_off, "i_on": i_on}
     m.update({f"off_{k}": v for k, v in as_dict(off).items()})
     m.update({f"on_{k}": v for k, v in as_dict(on).items()})
     m["e_ts"] = m["off_e_off"] + m["on_e_on"]
+    # Energy of one hard-switched cycle of the half-bridge: DUT Eon + Eoff plus the
+    # free-wheeling device's energy during the DUT turn-on (Err, see DESIGN.md).
+    m["e_cycle"] = m["e_ts"] + m["on_e_rr"]
     m["vgs_hs_margin"] = c.device.vth_min - m["on_vgs_hs_max"]
     # A gate swing outside the absolute ratings means the stage oscillates: the loss
     # numbers of such a run describe an unusable design, not a loss to optimise.
@@ -89,8 +95,9 @@ def metrics_from(sim: SimResult) -> dict[str, float]:
 
 
 def run_one(cfg: DPTConfig) -> RunRecord:
+    """Simulate one configuration; failures are recorded, not raised."""
     try:
-        sim = simulate_robust(cfg)
+        sim = simulate_with_retry(cfg)
         m = metrics_from(sim)
         m["cshunt"] = sim.cfg.cshunt
         return RunRecord(cfg, m)
@@ -110,6 +117,7 @@ def run_many(cfgs: Sequence[DPTConfig], workers: int = 2) -> list[RunRecord]:
 
 
 def write_csv(records: Iterable[RunRecord], path: Path) -> None:
+    """One row per run; columns are the union of all rows, in first-seen order."""
     rows = [r.row() for r in records]
     keys: list[str] = []
     for row in rows:
@@ -128,8 +136,3 @@ def _fmt(v: object) -> object:
     if isinstance(v, float):
         return "" if math.isnan(v) else f"{v:.6g}"
     return v
-
-
-def read_csv(path: Path) -> list[dict[str, str]]:
-    with path.open(newline="", encoding="utf-8") as fh:
-        return list(csv.DictReader(fh))

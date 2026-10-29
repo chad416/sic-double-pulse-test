@@ -37,6 +37,7 @@ def find_ltspice() -> Path:
     candidates += [
         Path(r"C:\Program Files\ADI\LTspice\LTspice.exe"),
         Path(r"C:\Program Files\LTC\LTspiceXVII\XVIIx64.exe"),
+        Path("/Applications/LTspice.app/Contents/MacOS/LTspice"),  # untested
     ]
     which = shutil.which("LTspice") or shutil.which("LTspice.exe")
     if which:
@@ -115,11 +116,12 @@ def simulate(
     return SimResult(cfg=cfg, raw=read_raw(raw_path), workdir=workdir)
 
 
-# cshunt values verified to lie on the converged plateau (Eon within 1 %, DESIGN.md).
+# cshunt retry order. All three lie on the converged plateau: at the nominal point Eon
+# differs by about 1 % at most between them (results/convergence.csv, DESIGN.md section 6).
 CSHUNT_LADDER = (1e-21, 1e-22, 1e-19)
 
 
-def simulate_robust(cfg: DPTConfig, timeout_s: float = 300.0) -> SimResult:
+def simulate_with_retry(cfg: DPTConfig, timeout_s: float = 300.0) -> SimResult:
     """Simulate ``cfg``; on a convergence failure retry with the other plateau cshunt values.
 
     The returned ``SimResult.cfg`` carries the cshunt value that actually converged.

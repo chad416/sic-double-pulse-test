@@ -25,6 +25,8 @@ Circuit (low-side DUT, high-side freewheeling device of the same part number):
   common-source inductance ``Lcs`` (PCB trace shared by gate and power loops),
   and the Kelvin pin is left unconnected.
 * Separate turn-on / turn-off gate resistors are steered by ideal diodes.
+* The freewheeling device is held off through the same ``rg_off`` (a symmetric
+  half-bridge driver), so changing ``rg_off`` also changes its hold-off impedance.
 
 The netlist is plain text so it can be inspected, diffed and re-run by hand.
 """
@@ -35,6 +37,7 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -89,8 +92,8 @@ class DPTConfig:
     t_settle: float = 1e-6  # s, quiet time before the first pulse
     max_step: float = 0.0  # s, transient maximum time step (0 = simulator default)
     # Solver settings. "solver=alt" is onsemi's recommendation (AND90315). cshunt adds a
-    # capacitor from every node to ground; it is needed for convergence but values
-    # >= 1e-20 F visibly slow the modelled turn-on (see DESIGN.md, "Convergence").
+    # capacitor from every node to ground; it is needed for convergence, but 1e-17 F and
+    # above visibly slow the modelled turn-on (results/convergence.csv, DESIGN.md section 6).
     options: tuple[str, ...] = ("solver=alt", "abstol=1e-7", "vntol=1e-4")
     cshunt: float = 1e-21  # F
 
@@ -118,8 +121,9 @@ class DPTConfig:
     def t_stop(self) -> float:
         return self.t_turn_on + self.t_after
 
-    def with_(self, **changes: object) -> DPTConfig:
-        return replace(self, **changes)  # type: ignore[arg-type]
+    def with_(self, **changes: Any) -> DPTConfig:
+        """Copy with some fields changed."""
+        return replace(self, **changes)
 
     def key(self) -> str:
         """Stable short hash of the configuration, used as a cache key."""

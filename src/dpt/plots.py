@@ -152,7 +152,10 @@ def panel_grid(rows: Sequence[Sequence[Panel]], title: str, path: Path) -> Path:
                     color=INK_2,
                 )
             if pan.xlog:
+                # Log axis, but ticks at the swept values with plain labels (1, 2.2, 4.5 ...)
                 ax.set_xscale("log")
+                ax.set_xticks(xs, [f"{v:g}" for v in xs])
+                ax.minorticks_off()
             ax.set_xlabel(pan.xlabel)
             ax.set_ylabel(pan.ylabel)
             if pan.title:

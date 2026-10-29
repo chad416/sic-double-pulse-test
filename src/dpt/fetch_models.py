@@ -5,8 +5,9 @@ libraries are vendor-encrypted and carry the notice "Permission is granted to
 use this file for simulations but not to reverse engineer its contents", which
 does not grant redistribution. Each user downloads them from onsemi.com.
 
-onsemi's download server rejects most non-browser clients, so this script first
-tries a plain download and otherwise tells you exactly which file to save where.
+The script downloads each ZIP from onsemi's public model URL. If that fails (no
+network, or the server refuses a non-browser client), it prints the product page
+and the exact file name to save by hand.
 
 Usage::
 
@@ -33,7 +34,7 @@ class ModelZip:
     stem: str
     url: str
     product_page: str
-    sha256: str  # of the file downloaded on 2026-10-28 (model version 2.3)
+    sha256: str  # of the ZIP used for the committed results (see third_party/onsemi)
 
 
 ZIPS = (
@@ -53,6 +54,7 @@ ZIPS = (
 
 
 def sha256_of(path: Path) -> str:
+    """Hex SHA256 of a file."""
     h = hashlib.sha256()
     with path.open("rb") as fh:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
