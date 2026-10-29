@@ -36,9 +36,11 @@ def test_first_pulse_width_charges_inductor_to_target() -> None:
     times = [p[0] for p in pts]
     assert times == sorted(times)
     # gate is on exactly over pulse 1, then off for t_off, then on again
-    assert (cfg.t_turn_off, cfg.vgs_on) in [(pytest.approx(t), v) for t, v in pts]
-    assert pts[-1] == (pytest.approx(cfg.t_turn_on + cfg.t_edge_drv), cfg.vgs_on)
-    assert pts[-2] == (pytest.approx(cfg.t_turn_on), cfg.vgs_off)
+    assert any(t == pytest.approx(cfg.t_turn_off) and v == cfg.vgs_on for t, v in pts)
+    assert pts[-1][0] == pytest.approx(cfg.t_turn_on + cfg.t_edge_drv)
+    assert pts[-1][1] == cfg.vgs_on
+    assert pts[-2][0] == pytest.approx(cfg.t_turn_on)
+    assert pts[-2][1] == cfg.vgs_off
     assert pts[2][0] - pts[1][0] == pytest.approx(cfg.t_edge_first)
 
 

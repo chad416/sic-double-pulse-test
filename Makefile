@@ -18,6 +18,7 @@ test:
 lint:
 	$(PY) -m ruff check src tests scripts
 	$(PY) -m black --check src tests scripts
+	$(PY) -m mypy
 
 format:
 	$(PY) -m ruff check --fix src tests scripts

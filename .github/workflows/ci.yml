@@ -1,7 +1,7 @@
-# Runs the simulator-independent checks: lint, formatting and unit tests.
+# Runs the simulator-independent checks: lint, formatting, type checks and unit tests.
 # The LTspice study itself needs the vendor-encrypted onsemi models and LTspice,
 # which cannot be redistributed or installed on a hosted runner; it is run locally
-# with `python -m dpt.run_all` and its outputs (results/, docs/figures/) are committed.
+# with `python -m dpt.run_all` and its outputs (results/, docs/) are committed.
 name: ci
 
 on:
@@ -13,19 +13,22 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install
+      - name: Install (pinned versions)
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
-      - name: Lint
+          python -m pip install -r requirements-lock.txt
+          python -m pip install -e . --no-deps
+      - name: Lint and format
         run: |
           ruff check src tests scripts
           black --check src tests scripts
+      - name: Type check
+        run: mypy
       - name: Unit tests
         run: pytest -q

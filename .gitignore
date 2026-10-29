@@ -1,5 +1,5 @@
 # Vendor material: onsemi SPICE models and PDFs are NOT redistributable here.
-# Fetch them with `python -m dpt.fetch_models` (see README, "How to reproduce").
+# Fetch them with `python -m dpt.fetch_models` (see README, "Reproduce").
 third_party/onsemi/*
 !third_party/onsemi/README.md
 !third_party/onsemi/SHA256SUMS
@@ -22,3 +22,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.coverage
+htmlcov/
+dist/

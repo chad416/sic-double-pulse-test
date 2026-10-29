@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 import pytest
 
@@ -30,7 +32,7 @@ def _nonuniform_time(t_end: float, n: int = 6000, seed: int = 1) -> np.ndarray:
 
 
 def _ramp(t: np.ndarray, t0: float, t1: float, y0: float, y1: float) -> np.ndarray:
-    return np.interp(t, [t0, t1], [y0, y1])
+    return np.asarray(np.interp(t, [t0, t1], [y0, y1]), dtype=float)
 
 
 def _turn_off_waveforms(t: np.ndarray, ring_amp: float = 0.0) -> Waveforms:
@@ -125,7 +127,7 @@ def _turn_on_waveforms(t: np.ndarray) -> Waveforms:
     )
 
 
-def _dense_reference(f, t0: float, t1: float) -> float:
+def _dense_reference(f: Callable[[np.ndarray], np.ndarray], t0: float, t1: float) -> float:
     tt = np.linspace(t0, t1, 200001)
     return float(np.trapezoid(f(tt), tt))
 
