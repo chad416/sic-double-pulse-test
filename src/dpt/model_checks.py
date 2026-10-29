@@ -108,6 +108,7 @@ def resistive_turn_on_delay(cp: CheckPoint) -> float:
 
 
 def run_checks() -> list[dict[str, object]]:
+    """Both checks for every part; ``passed`` is the turn-on delay criterion."""
     rows: list[dict[str, object]] = []
     for cp in CHECKS:
         r25, r175 = rds_on(cp, 25.0), rds_on(cp, 175.0)
@@ -128,4 +129,8 @@ def run_checks() -> list[dict[str, object]]:
 
 if __name__ == "__main__":
     for row in run_checks():
-        print(row)
+        print(
+            "  ".join(
+                f"{k}={v:.1f}" if isinstance(v, float) else f"{k}={v}" for k, v in row.items()
+            )
+        )

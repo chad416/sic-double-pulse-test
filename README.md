@@ -186,7 +186,7 @@ same batch mode, but this pipeline has not been run there.
 
    ```bash
    python -m pytest -q        # unit tests, no simulator needed
-   python -m dpt.run_all      # about 12 min from an empty cache on a laptop
+   python -m dpt.run_all      # 8 to 12 min from an empty cache on a laptop
    ```
 
 `run_all` rewrites `results/`, `docs/figures/`, `docs/results.md` and the generated blocks
