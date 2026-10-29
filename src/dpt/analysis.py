@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 import numpy as np
@@ -43,4 +44,33 @@ def best_under_constraints(
 
 
 def deviation_pct(sim: float, ref: float) -> float:
+    """Signed deviation of ``sim`` from ``ref`` in percent."""
     return 100.0 * (sim - ref) / ref
+
+
+def combined_limit(*limits: float) -> float:
+    """Budget that satisfies several independent limits: the smallest of them.
+
+    ``nan`` (a limit already violated at the first swept point) propagates. Taking the
+    minimum of the individual interpolated limits avoids the bias of interpolating the
+    point-wise maximum of two curves, which kinks between swept points.
+    """
+    if any(math.isnan(x) for x in limits):
+        return float("nan")
+    return min(limits)
+
+
+def interp_at(x: float, xs: Sequence[float], ys: Sequence[float]) -> float:
+    """Linear interpolation of ``y(x)`` for a monotonic but unsorted ``xs``.
+
+    Returns ``nan`` outside the sampled range instead of extrapolating.
+    """
+    xa = np.asarray(xs, dtype=float)
+    ya = np.asarray(ys, dtype=float)
+    order = np.argsort(xa)
+    xa, ya = xa[order], ya[order]
+    if np.any(np.diff(xa) <= 0):
+        raise ValueError("xs must be strictly monotonic")
+    if not xa[0] <= x <= xa[-1]:
+        return float("nan")
+    return float(np.interp(x, xa, ya))
