@@ -72,7 +72,7 @@ def _write_rows(rows: list[Row], path: Path) -> None:
     for r in rows:
         keys += [k for k in r if k not in keys]
     with path.open("w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=keys)
+        w = csv.DictWriter(fh, fieldnames=keys, lineterminator="\n")
         w.writeheader()
         for r in rows:
             w.writerow({k: (f"{v:.6g}" if isinstance(v, float) else v) for k, v in r.items()})
@@ -982,7 +982,7 @@ def update_readme(block: str) -> None:
         return
     a = text.index(MARK_START)
     b = text.index(MARK_END) + len(MARK_END)
-    README.write_text(text[:a] + block + text[b:], encoding="utf-8")
+    README.write_text(text[:a] + block + text[b:], encoding="utf-8", newline="\n")
 
 
 def _jsonable(o: object) -> object:
@@ -1011,7 +1011,7 @@ def main(argv: list[str] | None = None) -> int:
     summary["model_checks"] = checks
     RESULTS.mkdir(parents=True, exist_ok=True)
     (RESULTS / "summary.json").write_text(
-        json.dumps(_jsonable(summary), indent=2), encoding="utf-8"
+        json.dumps(_jsonable(summary), indent=2) + "\n", encoding="utf-8", newline="\n"
     )
     update_readme(readme_block(summary))
     print(f"done: results in {RESULTS}, figures in {FIGURES}")

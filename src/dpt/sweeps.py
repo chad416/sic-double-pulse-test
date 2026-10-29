@@ -118,7 +118,7 @@ def write_csv(records: Iterable[RunRecord], path: Path) -> None:
                 keys.append(k)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as fh:
-        wr = csv.DictWriter(fh, fieldnames=keys)
+        wr = csv.DictWriter(fh, fieldnames=keys, lineterminator="\n")
         wr.writeheader()
         for row in rows:
             wr.writerow({k: _fmt(row.get(k, "")) for k in keys})
