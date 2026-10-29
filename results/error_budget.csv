@@ -1,0 +1,13 @@
+source,method,e_on_uJ,e_on_change_pct,e_off_uJ,e_off_change_pct,e_tot_change_pct
+Nominal set-up (reference),simulated,448.818,0,165.66,0,0
+Driver output resistance +1 Ω on both edges,simulated,499.704,11.3377,193.801,16.9873,12.8608
+Gate-loop inductance 10 nH,simulated,407.197,-9.27338,159.559,-3.68281,-7.76619
+External loop inductance 10 nH,simulated (validation bracket),566.284,26.1722,146.543,-11.5402,16.0052
+External loop inductance 20 nH,simulated (validation bracket),510.797,13.8094,156.534,-5.50872,8.60135
+External loop inductance 50 nH,simulated (validation bracket),326.043,-27.3551,179.368,8.27465,-17.7495
+Current probe 1 ns late (deskew error),re-extracted,398.295,-11.257,191.146,15.3843,-4.07466
+Current probe 1 ns early (deskew error),re-extracted,497.799,10.9134,141.93,-14.3246,4.10939
+Eon window ends at 10 % of Vbus instead of 2 %,re-extracted,446.4,-0.538708,165.66,0,-0.393475
+Eoff window ends at 10 % of iD instead of 2 %,re-extracted,448.818,0,164.035,-0.980985,-0.264468
+cshunt 1e-19 F instead of 1e-21 F,simulated (convergence study),453.53,1.04994,163.762,-1.14562,0.458031
+cshunt 1e-22 F instead of 1e-21 F,simulated (convergence study),447.765,-0.23473,165.637,-0.0138315,-0.175177
