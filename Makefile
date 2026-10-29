@@ -16,12 +16,12 @@ test:
 	$(PY) -m pytest -q
 
 lint:
-	$(PY) -m ruff check src tests
-	$(PY) -m black --check src tests
+	$(PY) -m ruff check src tests scripts
+	$(PY) -m black --check src tests scripts
 
 format:
-	$(PY) -m ruff check --fix src tests
-	$(PY) -m black src tests
+	$(PY) -m ruff check --fix src tests scripts
+	$(PY) -m black src tests scripts
 
 sim:
 	$(PY) -m dpt.run_all

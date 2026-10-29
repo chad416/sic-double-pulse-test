@@ -197,6 +197,18 @@ Sweep runs that failed on every cshunt retry: 0.
 | ![Rg trade-off](docs/figures/rg_tradeoff.png) | ![Stray budget](docs/figures/stray_budget.png) |
 | ![Kelvin benefit](docs/figures/kelvin_benefit.png) | ![Operating point](docs/figures/operating_point.png) |
 
+### Screenshots
+
+Console runs, captured as text from the real commands
+(`docs/screenshots/transcripts/`) and rendered with `scripts/render_console.py`;
+browser views of this report rendered with `scripts/readme_to_html.py`.
+
+| | |
+|---|---|
+| ![Clean-clone reproduction](docs/screenshots/terminal_run_all.png) | ![Unit tests](docs/screenshots/terminal_pytest.png) |
+| ![Model checks](docs/screenshots/terminal_model_checks.png) | ![Lint](docs/screenshots/terminal_lint.png) |
+| ![Generated netlist](docs/screenshots/terminal_netlist.png) | ![Report, key findings](docs/screenshots/report_key_findings.jpg) |
+
 ## 5. Engineering decisions and trade-offs
 
 * **Rg,on and Rg,off are separate design variables.** Rg,on mostly trades Eon against the

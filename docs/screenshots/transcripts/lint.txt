@@ -1,0 +1,7 @@
+$ ruff check src tests
+All checks passed!
+$ black --check src tests
+All done!
+17 files would be left unchanged.
+$ python -m dpt.fetch_models --check
+exit code: 0

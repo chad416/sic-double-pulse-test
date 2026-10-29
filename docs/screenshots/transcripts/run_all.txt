@@ -1,0 +1,19 @@
+$ git clone <repo> clone && cd clone        # fresh clone, empty simulation cache
+$ python -m venv .venv && pip install -r requirements-lock.txt && pip install -e . --no-deps
+$ python -m dpt.fetch_models
+unpacked onsemi_sicmosfet_1200m3s_ltspice.zip
+unpacked onsemi_sicmosfet_650m3s_ltspice.zip
+$ python -m pytest -q
+21 passed in 17.04s
+$ ruff check src tests && black --check src tests
+All checks passed!
+$ time python -m dpt.run_all             # every simulation from scratch
+real	7m18.491s
+$ git diff --ignore-cr-at-eol --stat     # regenerated CSVs, figures, README vs committed
+(no output: identical)
+
+$ python -m dpt.run_all                  # in the working repo, all runs served from build/sim cache
+done: results in results/, figures in docs/figures/
+real	1m9.275s
+$ git status --short
+(clean)
