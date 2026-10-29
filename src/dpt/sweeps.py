@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from dpt.extract import ExtractionError, as_dict, extract_turn_off, extract_turn_on
-from dpt.ltspice import SimResult, SimulationError, simulate
+from dpt.ltspice import SimResult, SimulationError, simulate_robust
 from dpt.netlist import DPTConfig
 
 # Configuration columns written next to the metrics in every CSV row.
@@ -75,7 +75,10 @@ def metrics_from(sim: SimResult) -> dict[str, float]:
 
 def run_one(cfg: DPTConfig) -> RunRecord:
     try:
-        return RunRecord(cfg, metrics_from(simulate(cfg)))
+        sim = simulate_robust(cfg)
+        m = metrics_from(sim)
+        m["cshunt"] = sim.cfg.cshunt
+        return RunRecord(cfg, m)
     except (SimulationError, ExtractionError) as exc:
         return RunRecord(cfg, {}, error=f"{type(exc).__name__}: {str(exc).splitlines()[0]}")
 

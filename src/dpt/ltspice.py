@@ -88,7 +88,7 @@ def simulate(
     cfg: DPTConfig,
     cache_root: Path = CACHE_ROOT,
     model_root: Path = MODEL_ROOT,
-    timeout_s: float = 3600.0,
+    timeout_s: float = 300.0,
     force: bool = False,
 ) -> SimResult:
     """Simulate ``cfg`` (or reuse a cached result) and return the parsed output."""
@@ -113,3 +113,22 @@ def simulate(
             tail = log_path.read_text(errors="replace")[-600:] if log_path.is_file() else ""
             raise SimulationError(f"LTspice run incomplete for {net}:\n{tail}")
     return SimResult(cfg=cfg, raw=read_raw(raw_path), workdir=workdir)
+
+
+# cshunt values verified to lie on the converged plateau (Eon within 1 %, DESIGN.md).
+CSHUNT_LADDER = (1e-21, 1e-22, 1e-19)
+
+
+def simulate_robust(cfg: DPTConfig, timeout_s: float = 300.0) -> SimResult:
+    """Simulate ``cfg``; on a convergence failure retry with the other plateau cshunt values.
+
+    The returned ``SimResult.cfg`` carries the cshunt value that actually converged.
+    """
+    errors: list[str] = []
+    ladder = [cfg.cshunt] + [c for c in CSHUNT_LADDER if c != cfg.cshunt]
+    for cs in ladder:
+        try:
+            return simulate(cfg.with_(cshunt=cs), timeout_s=timeout_s)
+        except SimulationError as exc:
+            errors.append(f"cshunt={cs:g}: {str(exc).splitlines()[0]}")
+    raise SimulationError("all cshunt retries failed: " + " | ".join(errors))

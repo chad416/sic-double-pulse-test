@@ -31,12 +31,15 @@ def test_first_pulse_width_charges_inductor_to_target() -> None:
     cfg = DPTConfig(device=NTH4L022N120M3S, vbus=800, i_load=40, l_load=20e-6)
     assert cfg.t_pulse1 == pytest.approx(1e-6)
     assert cfg.t_turn_on - cfg.t_turn_off == pytest.approx(cfg.t_off + cfg.t_edge_drv)
-    pulse = _line(render(cfg, ROOT), "Vdrv").split("PULSE(")[1].rstrip(")").split()
-    v1, v2, tdel, tr, _tf, ton, period, ncyc = (float(x) for x in pulse)
-    assert (v1, v2) == (cfg.vgs_off, cfg.vgs_on)
-    assert tdel + tr + ton == pytest.approx(cfg.t_turn_off)
-    assert tdel + period == pytest.approx(cfg.t_turn_on)
-    assert ncyc == 2
+    pwl = _line(render(cfg, ROOT), "Vdrv").split("PWL(")[1].rstrip(")").split()
+    pts = [(float(pwl[k]), float(pwl[k + 1])) for k in range(0, len(pwl), 2)]
+    times = [p[0] for p in pts]
+    assert times == sorted(times)
+    # gate is on exactly over pulse 1, then off for t_off, then on again
+    assert (cfg.t_turn_off, cfg.vgs_on) in [(pytest.approx(t), v) for t, v in pts]
+    assert pts[-1] == (pytest.approx(cfg.t_turn_on + cfg.t_edge_drv), cfg.vgs_on)
+    assert pts[-2] == (pytest.approx(cfg.t_turn_on), cfg.vgs_off)
+    assert pts[2][0] - pts[1][0] == pytest.approx(cfg.t_edge_first)
 
 
 def test_kelvin_and_common_source_modes() -> None:

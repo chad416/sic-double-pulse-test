@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 
@@ -66,7 +66,8 @@ class DPTConfig:
     rg_off: float = 4.5  # Ohm, external
     vgs_on: float = 18.0  # V
     vgs_off: float = -3.0  # V
-    t_edge_drv: float = 5e-9  # s, driver output 0-100 % edge of the ideal source
+    t_edge_drv: float = 5e-9  # s, driver output 0-100 % edge of the measured edges
+    t_edge_first: float = 50e-9  # s, edge of the first (unmeasured, zero-current) turn-on
     l_loop: float = 30e-9  # H, external power-loop inductance
     l_cs: float = 0.0  # H, extra common-source inductance (non-Kelvin mode only)
     kelvin: bool = True
@@ -81,9 +82,11 @@ class DPTConfig:
     t_ramp: float = 2e-6  # s, DC-link ramp at start (eases the initial operating point)
     t_settle: float = 1e-6  # s, quiet time before the first pulse
     max_step: float = 0.0  # s, transient maximum time step (0 = simulator default)
-    options: tuple[str, ...] = field(
-        default=("solver=alt", "abstol=1e-7", "vntol=1e-4", "cshunt=1e-15")
-    )
+    # Solver settings. "solver=alt" is onsemi's recommendation (AND90315). cshunt adds a
+    # capacitor from every node to ground; it is needed for convergence but values
+    # >= 1e-20 F visibly slow the modelled turn-on (see DESIGN.md, "Convergence").
+    options: tuple[str, ...] = ("solver=alt", "abstol=1e-7", "vntol=1e-4")
+    cshunt: float = 1e-21  # F
 
     # ---- derived timing -------------------------------------------------------
     @property
@@ -98,7 +101,7 @@ class DPTConfig:
     @property
     def t_turn_off(self) -> float:
         """Gate command edge of the measured turn-off (end of pulse 1)."""
-        return self.t_first_on + self.t_edge_drv + self.t_pulse1
+        return self.t_first_on + self.t_edge_first + self.t_pulse1
 
     @property
     def t_turn_on(self) -> float:
@@ -161,8 +164,19 @@ def render(cfg: DPTConfig, model_root: Path) -> str:
     """Return the LTspice netlist text for ``cfg``."""
     dev = cfg.device
     lib = (model_root / dev.zip_stem / dev.library).resolve().as_posix()
-    # PULSE period is measured between rising-edge starts: rise + width + fall + low time.
-    period = cfg.t_pulse1 + 2 * cfg.t_edge_drv + cfg.t_off
+    # Gate command as PWL: a soft first edge (zero-current turn-on, not measured, eases
+    # convergence), then the measured turn-off and turn-on edges with t_edge_drv.
+    off, on = cfg.vgs_off, cfg.vgs_on
+    pwl = [
+        (0.0, off),
+        (cfg.t_first_on, off),
+        (cfg.t_first_on + cfg.t_edge_first, on),
+        (cfg.t_turn_off, on),
+        (cfg.t_turn_off + cfg.t_edge_drv, off),
+        (cfg.t_turn_on, off),
+        (cfg.t_turn_on + cfg.t_edge_drv, on),
+    ]
+    pwl_text = " ".join(f"{t:.6g} {v:g}" for t, v in pwl)
     if cfg.kelvin:
         ls_driver_ref = "dut_ks"
         source_path = "Lsrc dut_s 0 {Lloop/2} Rser=0.1m"
@@ -206,15 +220,11 @@ def render(cfg: DPTConfig, model_root: Path) -> str:
         "Vid sw dut_d 0",
         f"XLS {_pins(dev, 'dut', 'dut_d')} {dev.subckt}",
         source_path,
-        "* --- gate driver (ideal source, two pulses)",
-        (
-            f"Vdrv drv {ls_driver_ref} PULSE({cfg.vgs_off:g} {cfg.vgs_on:g} "
-            f"{cfg.t_first_on:g} {cfg.t_edge_drv:g} {cfg.t_edge_drv:g} "
-            f"{cfg.t_pulse1:g} {period:g} 2)"
-        ),
+        "* --- gate driver (ideal source, double pulse as PWL)",
+        f"Vdrv drv {ls_driver_ref} PWL({pwl_text})",
         driver,
         f".tran 0 {cfg.t_stop:g}" + (f" 0 {cfg.max_step:g}" if cfg.max_step > 0 else ""),
-        ".options plotwinsize=0 " + " ".join(cfg.options),
+        ".options plotwinsize=0 " + " ".join(cfg.options) + f" cshunt={cfg.cshunt:g}",
         ".save " + " ".join(SAVE_VECTORS),
         ".end",
     ]
