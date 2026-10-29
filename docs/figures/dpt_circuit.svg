@@ -23,10 +23,13 @@
     <line x1="458" y1="150" x2="470" y2="150"/>
     <line x1="450" y1="112" x2="450" y2="148"/>
     <line x1="470" y1="150" x2="470" y2="230"/>
-    <line x1="420" y1="130" x2="450" y2="130"/>
-    <!-- HS gate hold-off source -->
-    <line x1="420" y1="130" x2="392" y2="130"/>
-    <circle cx="380" cy="130" r="12"/>
+    <!-- HS gate hold-off: -3 V source and Rg,off, returned to the HS source -->
+    <line x1="390" y1="130" x2="450" y2="130"/>
+    <rect x="350" y="122" width="40" height="16"/>
+    <line x1="312" y1="130" x2="350" y2="130"/>
+    <circle cx="300" cy="130" r="12"/>
+    <line x1="300" y1="142" x2="300" y2="195"/>
+    <line x1="300" y1="195" x2="470" y2="195"/>
     <!-- body diode -->
     <path d="M500,130 l-12,20 h24 z" fill="#0b0b0b"/>
     <line x1="488" y1="128" x2="512" y2="128"/>
@@ -55,9 +58,11 @@
     <rect x="390" y="282" width="40" height="16"/>
     <line x1="390" y1="290" x2="360" y2="290"/>
     <!-- driver source -->
-    <circle cx="340" cy="310" r="22"/>
-    <line x1="340" y1="288" x2="360" y2="290"/>
-    <line x1="340" y1="332" x2="360" y2="330"/>
+    <circle cx="320" cy="310" r="14"/>
+    <line x1="320" y1="296" x2="320" y2="290"/>
+    <line x1="320" y1="290" x2="360" y2="290"/>
+    <line x1="320" y1="324" x2="320" y2="330"/>
+    <line x1="320" y1="330" x2="360" y2="330"/>
     <!-- Lloop/2 bottom -->
     <line x1="470" y1="340" x2="470" y2="350"/>
     <path d="M470,350 a8,8 0 0 1 0,16 a8,8 0 0 1 0,16 a8,8 0 0 1 0,16"/>
@@ -67,21 +72,23 @@
   <!-- labels -->
   <g fill="#0b0b0b">
     <text x="90" y="180">Vbus</text>
-    <text x="90" y="268" fill="#52514e">400–800 V</text>
+    <text x="90" y="268" fill="#52514e">800 V</text>
     <text x="196" y="215">Cbus</text>
     <text x="196" y="232" fill="#52514e">10 µF</text>
     <text x="200" y="55">Lloop / 2</text>
-    <text x="210" y="112">Free-wheeling device (high side):</text>
-    <text x="210" y="129" fill="#52514e">same MOSFET, body diode;</text>
-    <text x="210" y="146" fill="#52514e">gate held at −3 V via Rg,off</text>
+    <text x="522" y="118" font-size="12">Free-wheeling device</text>
+    <text x="522" y="134" fill="#52514e" font-size="12">same MOSFET, its body</text>
+    <text x="522" y="150" fill="#52514e" font-size="12">diode carries the load</text>
+    <text x="252" y="112" fill="#52514e">−3 V</text>
+    <text x="350" y="114">Rg,off</text>
     <text x="696" y="136">Lload</text>
     <text x="696" y="153" fill="#52514e">100 µH</text>
     <text x="490" y="285">DUT (low side)</text>
     <text x="490" y="302" fill="#52514e">onsemi NTH4L022N120M3S</text>
     <text x="490" y="319" fill="#52514e">TO-247-4L, 4-pin model</text>
     <text x="378" y="276">Rg,on / Rg,off</text>
-    <text x="250" y="300">−3 / +18 V</text>
-    <text x="250" y="317" fill="#52514e">ideal driver</text>
+    <text x="222" y="304">−3 / +18 V</text>
+    <text x="222" y="321" fill="#52514e">ideal driver</text>
     <text x="365" y="350" fill="#52514e">Kelvin source (SS)</text>
     <text x="488" y="380">Lloop / 2</text>
     <text x="560" y="248" fill="#52514e">switch node</text>
