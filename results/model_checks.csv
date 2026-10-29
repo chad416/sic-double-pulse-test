@@ -1,0 +1,3 @@
+part,rds_on_25_sim_mohm,rds_on_25_ds_mohm,rds_on_175_sim_mohm,rds_on_175_ds_mohm,turn_on_delay_ns,passed
+NTH4L022N120M3S,21.5248,22,42.9611,44,19.0456,True
+NTH4L032N065M3S,33.8726,32,49.535,49,604.69,False

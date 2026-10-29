@@ -153,6 +153,21 @@ def ringing(t: FloatArray, y: FloatArray, t0: float, t1: float) -> tuple[float, 
     return best
 
 
+def max_slope(t: FloatArray, y: FloatArray, t0: float, t1: float, window: float = 1e-9) -> float:
+    """Largest |dy/dt| on ``[t0, t1]``, each slope averaged over ``window`` seconds.
+
+    Averaging over a short window (1 ns, about the rise time a 350 MHz probe resolves)
+    keeps single-step numerical spikes out of the result.
+    """
+    n = max(int((t1 - t0) / (window / 8)), 16)
+    tu = np.linspace(t0, t1, n)
+    yu = np.interp(tu, t, y)
+    k = max(round(float(window / (tu[1] - tu[0]))), 1)
+    if k >= n:
+        return float("nan")
+    return float(np.max(np.abs(yu[k:] - yu[:-k])) / (tu[k] - tu[0]))
+
+
 def _slope(
     t: FloatArray,
     y: FloatArray,
@@ -179,6 +194,7 @@ class TurnOffResult:
     t_start: float
     t_end: float
     dv_dt: float  # V/s, 20-80 %
+    dv_dt_max: float  # V/s, peak slope (1 ns window)
     di_dt: float  # A/s (negative), 80-20 %
     vds_peak: float  # V
     overshoot: float  # V above Vbus
@@ -199,6 +215,7 @@ class TurnOnResult:
     t_start: float
     t_end: float
     dv_dt: float  # V/s (negative), 80-20 %
+    dv_dt_max: float  # V/s, peak |slope| (1 ns window), positive
     di_dt: float  # A/s, 20-80 %
     id_peak: float  # A
     vgs_hs_max: float  # V, highest freewheeling gate excursion (false turn-on risk)
@@ -254,6 +271,7 @@ def extract_turn_off(
         t_start=t0,
         t_end=t1,
         dv_dt=dv_dt,
+        dv_dt_max=max_slope(t, w.vds, t0, t1),
         di_dt=di_dt,
         vds_peak=vds_peak,
         overshoot=vds_peak - vbus,
@@ -317,6 +335,7 @@ def extract_turn_on(
         t_start=t0,
         t_end=t1,
         dv_dt=dv_dt,
+        dv_dt_max=max_slope(t, w.vds, t0, t1),
         di_dt=di_dt,
         id_peak=float(np.max(seg.id)),
         vgs_hs_max=float(np.max(seg.vgs_hs)),

@@ -13,6 +13,7 @@ from dpt.extract import (
     extract_turn_off,
     extract_turn_on,
     integrate,
+    max_slope,
     ringing,
 )
 
@@ -87,6 +88,7 @@ def test_turn_off_energy_slopes_and_times() -> None:
     expected = V * IL * (10 * NS) + V * IL * (9.8 - 9.8**2 / 20) * NS
     assert r.e_off == pytest.approx(expected, rel=5e-3)
     assert r.dv_dt == pytest.approx(V / (20 * NS), rel=5e-3)
+    assert r.dv_dt_max == pytest.approx(V / (20 * NS), rel=2e-2)
     assert r.di_dt == pytest.approx(-IL / (10 * NS), rel=5e-3)
     assert r.td_off == pytest.approx((151 - 102) * NS, rel=5e-3)
     assert r.tf == pytest.approx(8 * NS, rel=5e-3)
@@ -167,3 +169,10 @@ def test_window_thresholds_are_respected() -> None:
     tight = extract_turn_off(w, 100 * NS, V, IL, VGS_ON, VGS_OFF)
     assert loose.t_end < tight.t_end
     assert loose.e_off < tight.e_off
+
+
+def test_max_slope_finds_fast_segment_of_two_slope_edge() -> None:
+    t = np.linspace(0.0, 100 * NS, 20001)
+    # slow 400 V drop over 40 ns, then a fast 400 V collapse over 4 ns
+    y = np.interp(t, [0, 40 * NS, 44 * NS, 100 * NS], [800.0, 400.0, 0.0, 0.0])
+    assert max_slope(t, y, 0.0, 100 * NS) == pytest.approx(400.0 / (4 * NS), rel=2e-2)

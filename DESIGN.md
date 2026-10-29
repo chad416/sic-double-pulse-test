@@ -97,8 +97,7 @@ Another trap found here: the two libraries order the source pins differently (12
 With default settings the 1200 V model does not converge in a DPT in LTspice 26.0.1, with
 either solver. Alternate solver + `abstol=1e-7 vntol=1e-4` + `cshunt=1e-15` (1 fF from
 every node to ground, a common LTspice trick) runs in ~20 s, and turn-off matched the
-datasheet well. Turn-on, however, was 15× too slow and Eon 5.6× too high (2.76 mJ vs
-490 µJ).
+datasheet well. Turn-on, however, was 15× too slow and Eon about 5.5× the datasheet value.
 
 What it was **not**: solver tolerances (reltol 1e-4, Gear integration: identical),
 gate drive (a 0.1 Ω drive gave the same 0.4 A/ns), the body diode (same with an ideal
@@ -110,11 +109,14 @@ What it **was**: the convergence aid itself. The model has internal high-impedan
 freezes internal state that the channel needs during clamped-inductive turn-on.
 Sweeping cshunt shows it directly (`results/convergence.csv`):
 
-| cshunt | Eon | current rise |
+| cshunt | Eon | current rise time |
 |---|---|---|
-| 1e-15 F | 2.8 mJ | 81 ns |
-| 1e-17 F | 0.69 mJ | 10 ns |
-| 1e-19 … 1e-22 F | 0.47 mJ (±1 %) | 5.5–6 ns |
+| 1e-15 F | 2.71 mJ | 81 ns |
+| 1e-17 F | 0.73 mJ | 11.6 ns |
+| 1e-19 … 1e-22 F | 0.448–0.454 mJ | 5.4–5.8 ns |
+
+(values from `results/convergence.csv`, nominal point; the investigation itself was done
+on an earlier variant of the set-up with the same outcome.)
 
 The default is 1e-21 F, on the converged plateau. Runs that fail retry at 1e-22, then
 1e-19 F (`CSHUNT_LADDER`); the value that converged is written to every CSV row.
@@ -148,7 +150,8 @@ Qrr, which is measured at 1 A/ns.
 
 * Every drain-source peak ≤ 80 % of V(BR)DSS (960 V for the 1200 V part): a common
   derating for cosmic-ray robustness and margin.
-* |dv/dt| ≤ 50 V/ns: a typical EMI / motor-insulation guideline for SiC drives.
+* |dv/dt| ≤ 50 V/ns, applied to the 1 ns peak slope (conservative): a typical EMI /
+  motor-insulation guideline for SiC drives. The 20-80 % average is reported as well.
 * Free-wheel gate excursion compared with VGS(th),min = 2.04 V (25 °C) and the −10 V
   absolute limit.
 

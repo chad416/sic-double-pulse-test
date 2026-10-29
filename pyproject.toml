@@ -40,3 +40,5 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF"]
+# Typographic characters (µ, Ω, −, ×) are intentional in generated README text.
+ignore = ["RUF001"]

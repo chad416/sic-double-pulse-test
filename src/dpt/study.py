@@ -87,6 +87,13 @@ def sweeps() -> list[Sweep]:
         _sweep("i_load", "i_load", "Switched current (A)", (10.0, 20.0, 40.0, 60.0), NOMINAL),
         _sweep("temp", "temp", "Temperature (C)", (25.0, 100.0, 150.0, 175.0), NOMINAL),
         _sweep(
+            "vgs_off",
+            "vgs_off",
+            "Turn-off gate voltage of both devices (V)",
+            (0.0, -3.0, -5.0),
+            NOMINAL,
+        ),
+        _sweep(
             "l_cs",
             "l_cs",
             "Extra common-source inductance, non-Kelvin drive (nH)",

@@ -96,7 +96,7 @@ def run_validation(workers: int, parts: set[str]) -> list[Row]:
         row: Row = {
             "part": p.device.part,
             "temp": p.temp,
-            "l_loop_nH": l_loop / NH,
+            "l_loop_nH": round(l_loop / NH, 6),
             "e_on_sim_uJ": e_on,
             "e_on_ds_uJ": p.e_on * UJ,
             "e_on_dev_pct": deviation_pct(e_on, p.e_on * UJ),
@@ -239,8 +239,10 @@ def _rg_tradeoff(sw: dict[str, tuple[Sweep, list[RunRecord]]], summary: Row) -> 
     ok_on, ok_off = _ok(sw["rg_on"][1]), _ok(sw["rg_off"][1])
     x_on = [r.cfg.rg_on for r in ok_on]
     x_off = [r.cfg.rg_off for r in ok_off]
-    dv_on = [abs(v) for v in _col(ok_on, "on_dv_dt", VNS)]
-    dv_off = [abs(v) for v in _col(ok_off, "off_dv_dt", VNS)]
+    # Peak dv/dt (1 ns window) is used for the EMI limit: the turn-on vDS fall has a slow
+    # L*di/dt part and a fast diode-recovery collapse, so a 20-80 % average misleads.
+    dv_on = _col(ok_on, "on_dv_dt_max", VNS)
+    dv_off = _col(ok_off, "off_dv_dt_max", VNS)
     xo, xf = "Rg,on (Ohm)", "Rg,off (Ohm)"
     plots.panel_grid(
         [
@@ -253,7 +255,7 @@ def _rg_tradeoff(sw: dict[str, tuple[Sweep, list[RunRecord]]], summary: Row) -> 
                     xlog=True,
                     title="Turn-on (Rg,off = 4.5 Ohm)",
                 ),
-                Panel(x_on, xo, "|dv/dt| at turn-on (V/ns)", [("dv/dt", dv_on)], lim_dv, True),
+                Panel(x_on, xo, "Peak |dv/dt|, turn-on (V/ns)", [("dv/dt", dv_on)], lim_dv, True),
                 Panel(
                     x_on,
                     xo,
@@ -280,7 +282,9 @@ def _rg_tradeoff(sw: dict[str, tuple[Sweep, list[RunRecord]]], summary: Row) -> 
                     xlog=True,
                     title="Turn-off (Rg,on = 4.5 Ohm)",
                 ),
-                Panel(x_off, xf, "|dv/dt| at turn-off (V/ns)", [("dv/dt", dv_off)], lim_dv, True),
+                Panel(
+                    x_off, xf, "Peak |dv/dt|, turn-off (V/ns)", [("dv/dt", dv_off)], lim_dv, True
+                ),
                 Panel(
                     x_off,
                     xf,
@@ -318,8 +322,35 @@ def _rg_tradeoff(sw: dict[str, tuple[Sweep, list[RunRecord]]], summary: Row) -> 
             [v <= v_lim for v in _col(ok_off, "off_vds_peak")],
         ],
     )
-    on_keys = ("on_e_on", "on_e_rr", "on_dv_dt", "on_vds_hs_peak", "on_vgs_hs_max")
-    off_keys = ("off_e_off", "off_dv_dt", "off_vds_peak", "off_vgs_hs_min")
+
+    def first_ok(xs: list[float], ok: list[bool]) -> float | None:
+        """Smallest swept Rg from which the constraint holds for every larger Rg."""
+        for i in range(len(xs)):
+            if all(ok[i:]):
+                return xs[i]
+        return None
+
+    pk_on_l, pk_off_l = _col(ok_on, "on_vds_hs_peak"), _col(ok_off, "off_vds_peak")
+    summary["rg_min"] = {
+        "on_peak": first_ok(x_on, [v <= v_lim for v in pk_on_l]),
+        "on_dvdt": first_ok(x_on, [v <= DVDT_LIMIT * VNS for v in dv_on]),
+        "on_dvdt_lowest": min(dv_on),
+        "off_peak": first_ok(x_off, [v <= v_lim for v in pk_off_l]),
+        "off_dvdt": first_ok(x_off, [v <= DVDT_LIMIT * VNS for v in dv_off]),
+    }
+    on_keys = (
+        "on_e_on",
+        "on_e_rr",
+        "on_dv_dt",
+        "on_dv_dt_max",
+        "on_vds_hs_peak",
+        "on_vgs_hs_max",
+    )
+    off_keys = ("off_e_off", "off_dv_dt", "off_dv_dt_max", "off_vds_peak", "off_vgs_hs_min")
+    # Rg,off that would reproduce the datasheet Eoff (linear interpolation in the sweep).
+    ds_eoff = next(p.e_off for p in DATASHEET_POINTS if p.device.part == NOMINAL.device.part)
+    e_off_curve = _col(ok_off, "off_e_off")
+    summary["rg_off_matching_datasheet_eoff"] = float(np.interp(ds_eoff, e_off_curve, x_off))
     summary["rg_choice"] = {
         "rg_on": x_on[i_on] if i_on is not None else None,
         "rg_off": x_off[i_off] if i_off is not None else None,
@@ -339,7 +370,7 @@ def _stray_budget(sw: dict[str, tuple[Sweep, list[RunRecord]]], summary: Row) ->
     dev = NOMINAL.device
     v_lim = V_PEAK_LIMIT_FRACTION * dev.vds_rating
     ok = _ok(sw["l_loop"][1])
-    xl = [r.cfg.l_loop / NH for r in ok]
+    xl = [round(r.cfg.l_loop / NH, 6) for r in ok]
     pk_off, pk_on = _col(ok, "off_vds_peak"), _col(ok, "on_vds_hs_peak")
     x = "External loop inductance (nH)"
     plots.panel_grid(
@@ -381,35 +412,46 @@ def _kelvin(
 ) -> None:
     dev = NOMINAL.device
     ok = _ok(sw["l_cs"][1])
-    xk = [r.cfg.l_cs / NH for r in ok]
+    xk = [round(r.cfg.l_cs / NH, 6) for r in ok]
     x = "Extra common-source inductance (nH)"
+    # Only gate-stable runs carry a meaningful loss value; oscillating ones are listed
+    # in the README table instead of being plotted as if they were valid points.
+    st = [r for r in ok if r.metrics.get("gate_ok", 0.0) == 1.0]
+    xs = [round(r.cfg.l_cs / NH, 6) for r in st]
+    n_bad = len(ok) - len(st)
+    kel_line = "Kelvin drive"
     plots.panel_grid(
         [
             [
                 Panel(
-                    xk,
+                    xs,
                     x,
                     "Eon (uJ)",
-                    [("non-Kelvin", _col(ok, "on_e_on", UJ))],
-                    (kel["on_e_on"] * UJ, "Kelvin drive"),
+                    [("non-Kelvin", _col(st, "on_e_on", UJ))],
+                    (kel["on_e_on"] * UJ, kel_line),
                 ),
                 Panel(
-                    xk,
+                    xs,
                     x,
                     "Eoff (uJ)",
-                    [("non-Kelvin", _col(ok, "off_e_off", UJ))],
-                    (kel["off_e_off"] * UJ, "Kelvin drive"),
+                    [("non-Kelvin", _col(st, "off_e_off", UJ))],
+                    (kel["off_e_off"] * UJ, kel_line),
                 ),
                 Panel(
-                    xk,
+                    xs,
                     x,
                     "Eon + Eoff (uJ)",
-                    [("non-Kelvin", _col(ok, "e_ts", UJ))],
-                    (kel["e_ts"] * UJ, "Kelvin drive"),
+                    [("non-Kelvin", _col(st, "e_ts", UJ))],
+                    (kel["e_ts"] * UJ, kel_line),
                 ),
             ]
         ],
-        f"{dev.part}: Kelvin-source benefit at 800 V / 40 A, Rg = 4.5 Ohm, 30 nH",
+        f"{dev.part}: Kelvin-source benefit at 800 V / 40 A, Rg = 4.5 Ohm, 30 nH"
+        + (
+            f" ({n_bad} larger-Lcs run omitted: gate loop oscillates beyond rating)"
+            if n_bad
+            else ""
+        ),
         FIGURES / "kelvin_benefit.png",
     )
     summary["kelvin"] = {
@@ -486,6 +528,19 @@ def make_outputs(
     _stray_budget(sw, summary)
     _kelvin(sw, m_nom, summary)
     _operating_point(sw, summary)
+    ok_vg = _ok(sw["vgs_off"][1])
+    summary["vgs_off"] = [
+        {
+            "vgs_off": r.cfg.vgs_off,
+            "vgs_hs_max": r.metrics["on_vgs_hs_max"],
+            "margin": r.metrics["vgs_hs_margin"],
+            "e_on_uJ": r.metrics["on_e_on"] * UJ,
+            "e_off_uJ": r.metrics["off_e_off"] * UJ,
+            "e_rr_uJ": r.metrics["on_e_rr"] * UJ,
+            "vgs_hs_min": r.metrics["off_vgs_hs_min"],
+        }
+        for r in ok_vg
+    ]
     summary["failed_runs"] = [r.cfg.key() for _, (_, recs) in sw.items() for r in recs if r.error]
     return summary
 
@@ -497,8 +552,150 @@ def _table(header: list[str], rows: list[list[str]]) -> list[str]:
     return [*out, ""]
 
 
+def _rg_bullet(s: Row, vpk: str, dvdt_lim: float) -> str:
+    m, rg = s["rg_min"], s["rg_choice"]
+    assert isinstance(m, dict) and isinstance(rg, dict)
+    off_rows = {r["rg"]: r for r in rg["rg_off_rows"]}
+    nominal_eoff = off_rows[NOMINAL.rg_off]["off_e_off"]
+    if rg["rg_off"] is not None:
+        e = off_rows[rg["rg_off"]]["off_e_off"]
+        off_txt = (
+            f"the lowest-loss swept Rg,off meeting both is {rg['rg_off']:g} Ω "
+            f"(Eoff {e * UJ:.0f} µJ, {e / nominal_eoff:.1f}× the 4.5 Ω value)"
+        )
+    else:
+        off_txt = "no swept Rg,off meets both"
+    on_txt = (
+        f"Rg,on ≥ {m['on_peak']:g} Ω keeps the free-wheel recovery peak in limits"
+        if m["on_peak"] is not None
+        else "no swept Rg,on keeps the free-wheel recovery peak in limits"
+    )
+    dv_txt = (
+        f"and Rg,on ≥ {m['on_dvdt']:g} Ω meets the dv/dt limit."
+        if m["on_dvdt"] is not None
+        else (
+            "but no swept Rg,on meets the dv/dt limit (lowest peak "
+            f"{m['on_dvdt_lowest']:.0f} V/ns at 22 Ω): the final vDS collapse is set by the "
+            "body-diode recovery rather than by the gate."
+        )
+    )
+    return (
+        f"**Gate resistors (1 ns peak dv/dt ≤ {dvdt_lim:.0f} V/ns, every vDS peak ≤ {vpk}):** "
+        f"{off_txt}; {on_txt}, {dv_txt}"
+    )
+
+
+def _offbias_bullet(s: Row, vth: float) -> str:
+    rows = s["vgs_off"]
+    assert isinstance(rows, list)
+    safe = [r for r in rows if r["margin"] > 0]
+    if not safe:
+        return (
+            "**Off-state bias:** no swept off-state voltage keeps the free-wheel gate "
+            "below VGS(th),min."
+        )
+    r = max(safe, key=lambda x: float(x["vgs_off"]))  # least negative safe bias
+    return (
+        f"**Off-state bias:** {r['vgs_off']:g} V restores a {r['margin']:+.2f} V margin against "
+        f"false turn-on (and lowers Err to {r['e_rr_uJ']:.0f} µJ), but the free-wheel gate then "
+        f"swings to {r['vgs_hs_min']:.2f} V at DUT turn-off, below the −10 V absolute rating; "
+        "a Miller clamp or a less negative bias with a stronger hold-off path is needed."
+        if r["vgs_hs_min"] < -10.0
+        else f"**Off-state bias:** {r['vgs_off']:g} V restores a {r['margin']:+.2f} V margin "
+        f"against false turn-on with the negative gate excursion ({r['vgs_hs_min']:.2f} V) "
+        "within the −10 V rating."
+    )
+
+
+def key_findings(s: Row) -> list[str]:
+    """Headline bullets, every number taken from the summary."""
+    val = s["validation"]
+    n = s["nominal"]
+    rg = s["rg_choice"]
+    sb = s["stray_budget"]
+    k = s["kelvin"]
+    conv = s["convergence"]
+    lim = s["limits"]
+    assert isinstance(val, list) and isinstance(n, dict) and isinstance(rg, dict)
+    assert isinstance(sb, dict) and isinstance(k, dict) and isinstance(conv, list)
+    assert isinstance(lim, dict)
+    part = NOMINAL.device.part
+    v = [r for r in val if r["part"] == part and not r["error"]]
+    nom = next(r for r in v if r["l_loop_nH"] == 30.0)
+    on_lo = min(float(r["e_on_dev_pct"]) for r in v)  # type: ignore[arg-type]
+    on_hi = max(float(r["e_on_dev_pct"]) for r in v)  # type: ignore[arg-type]
+    off_lo = min(float(r["e_off_dev_pct"]) for r in v)  # type: ignore[arg-type]
+    off_hi = max(float(r["e_off_dev_pct"]) for r in v)  # type: ignore[arg-type]
+    l_lo = min(float(r["l_loop_nH"]) for r in v)  # type: ignore[arg-type]
+    l_hi = max(float(r["l_loop_nH"]) for r in v)  # type: ignore[arg-type]
+    pkg_only = next(r for r in k["rows"] if r["l_cs_nH"] == 0.0)
+    good = [r for r in conv if not r["error"]]
+    worst = max(good, key=lambda r: float(r["e_on_uJ"]))  # type: ignore[arg-type]
+    plateau = next(r for r in good if r["cshunt_F"] == NOMINAL.cshunt)
+    ratio = float(worst["e_on_uJ"]) / float(plateau["e_on_uJ"])  # type: ignore[arg-type]
+    vgs_fw = float(n["on_vgs_hs_max"])
+    vth = float(lim["vth_min_V"])  # type: ignore[arg-type]
+    unstable = [r for r in k["rows"] if not r["gate_ok"]]
+    vpk = f"{lim['v_peak_limit_V']:.0f} V"
+    bullets = [
+        f"**Validation ({part}, 800 V / 40 A / 4.5 Ω):** at a 30 nH loop the simulated "
+        f"Eon is {_fmt(nom['e_on_dev_pct'])} % and Eoff {_fmt(nom['e_off_dev_pct'])} % "
+        f"from the datasheet typicals (Etot {_fmt(nom['e_tot_dev_pct'])} %). Over a "
+        f"{l_lo:.0f}-{l_hi:.0f} nH bracket (the datasheet does not publish its loop "
+        f"inductance) Eon spans {on_lo:+.0f} … {on_hi:+.0f} % and Eoff "
+        f"{off_lo:+.0f} … {off_hi:+.0f} %.",
+        f"**Why Eoff is low:** Eoff rises steeply with turn-off gate resistance; the sweep "
+        f"reproduces the datasheet Eoff at Rg,off ≈ {s['rg_off_matching_datasheet_eoff']:.1f} Ω, "
+        "i.e. about "
+        f"{float(s['rg_off_matching_datasheet_eoff']) - NOMINAL.rg_off:.1f} Ω more than the "  # type: ignore[arg-type]
+        "datasheet's external 4.5 Ω. An ideal 0 Ω driver with no gate-loop impedance is the "
+        "fastest possible case, so a lower simulated Eoff is expected (driver output "
+        "resistance is typically 0.5–2 Ω).",
+        f"**Convergence aid matters:** with LTspice's `cshunt` at {worst['cshunt_F']:.0e} F "
+        f"the modelled Eon is {ratio:.1f}× the converged value; results only become "
+        "independent of it at ≤ 1e-19 F (DESIGN.md §6).",
+        _rg_bullet(s, vpk, float(lim["dv_dt_limit_V_per_ns"])),  # type: ignore[arg-type]
+        f"**Stray budget:** the external power loop must stay below "
+        f"≈ {_fmt(sb['l_max_nH_both'], 0)} nH at 800 V / 40 A / 4.5 Ω to keep both the DUT "
+        f"turn-off peak and the free-wheel recovery peak under {vpk}.",
+        f"**Kelvin source:** returning the driver to the power-source pin instead of the "
+        f"Kelvin pin raises Eon + Eoff by {pkg_only['e_ts_increase_pct']:.0f} % from the "
+        "package inductance alone"
+        + (
+            f"; with {unstable[0]['l_cs_nH']:.0f} nH of extra shared inductance the gate loop "
+            "oscillates beyond the gate rating."
+            if unstable
+            else "."
+        ),
+        f"**False turn-on check:** at the nominal point the free-wheeling device's gate "
+        f"peaks at {vgs_fw:.1f} V during DUT turn-on, "
+        + (
+            f"above VGS(th),min = {vth:.2f} V despite the −3 V off-bias (see the Rg,on table)."
+            if vgs_fw > vth
+            else f"below VGS(th),min = {vth:.2f} V."
+        ),
+        _offbias_bullet(s, vth),
+    ]
+    return ["#### Key findings", "", *[f"- {b}" for b in bullets], ""]
+
+
+def _kelvin_row(r: dict[str, object]) -> list[str]:
+    vg = f"{r['vgs_min']:.0f} … {r['vgs_max']:.0f}"
+    if not r["gate_ok"]:
+        return [f"{r['l_cs_nH']:.0f}", "–", "–", "–", "–", f"**{vg}: gate loop oscillates**"]
+    return [
+        f"{r['l_cs_nH']:.0f}",
+        f"{r['e_on_uJ']:.0f}",
+        f"{r['e_off_uJ']:.0f}",
+        f"{r['e_ts_uJ']:.0f}",
+        f"{r['e_ts_increase_pct']:+.0f} %",
+        vg,
+    ]
+
+
 def readme_block(s: Row) -> str:
     lines: list[str] = [MARK_START, ""]
+    lines += key_findings(s)
     chk = s["model_checks"]
     assert isinstance(chk, list)
     lines += ["#### Model sanity checks (run before any switching study)", ""]
@@ -589,12 +786,14 @@ def readme_block(s: Row) -> str:
                 f"{n['on_e_on'] * UJ:.0f} / {n['off_e_off'] * UJ:.0f} / {n['on_e_rr'] * UJ:.0f} µJ",
             ],
             [
-                "Turn-off dv/dt, di/dt (20-80 %)",
-                f"{n['off_dv_dt'] * VNS:.1f} V/ns, {n['off_di_dt'] * ANS:.2f} A/ns",
+                "Turn-off dv/dt (20-80 % avg / 1 ns peak), di/dt",
+                f"{n['off_dv_dt'] * VNS:.0f} / {n['off_dv_dt_max'] * VNS:.0f} V/ns, "
+                f"{n['off_di_dt'] * ANS:.2f} A/ns",
             ],
             [
-                "Turn-on dv/dt, di/dt (20-80 %)",
-                f"{n['on_dv_dt'] * VNS:.1f} V/ns, {n['on_di_dt'] * ANS:.2f} A/ns",
+                "Turn-on dv/dt (20-80 % avg / 1 ns peak), di/dt",
+                f"{n['on_dv_dt'] * VNS:.0f} / {n['on_dv_dt_max'] * VNS:.0f} V/ns, "
+                f"{n['on_di_dt'] * ANS:.2f} A/ns",
             ],
             ["DUT turn-off peak vDS", f"{n['off_vds_peak']:.0f} V (+{n['off_overshoot']:.0f} V)"],
             ["Free-wheel peak vDS at DUT turn-on", f"{n['on_vds_hs_peak']:.0f} V"],
@@ -623,7 +822,7 @@ def readme_block(s: Row) -> str:
             "Rg,on (Ω)",
             "Eon (µJ)",
             "Err (µJ)",
-            "turn-on dv/dt (V/ns)",
+            "turn-on dv/dt avg / max (V/ns)",
             "free-wheel peak vDS (V)",
             "free-wheel vGS max (V)",
         ],
@@ -632,7 +831,7 @@ def readme_block(s: Row) -> str:
                 f"{r['rg']:g}",
                 f"{r['on_e_on'] * UJ:.0f}",
                 f"{r['on_e_rr'] * UJ:.0f}",
-                f"{abs(r['on_dv_dt']) * VNS:.1f}",
+                f"{abs(r['on_dv_dt']) * VNS:.0f} / {r['on_dv_dt_max'] * VNS:.0f}",
                 f"{r['on_vds_hs_peak']:.0f}",
                 f"{r['on_vgs_hs_max']:.2f}",
             ]
@@ -643,7 +842,7 @@ def readme_block(s: Row) -> str:
         [
             "Rg,off (Ω)",
             "Eoff (µJ)",
-            "turn-off dv/dt (V/ns)",
+            "turn-off dv/dt avg / max (V/ns)",
             "DUT peak vDS (V)",
             "free-wheel vGS min (V)",
         ],
@@ -651,7 +850,7 @@ def readme_block(s: Row) -> str:
             [
                 f"{r['rg']:g}",
                 f"{r['off_e_off'] * UJ:.0f}",
-                f"{r['off_dv_dt'] * VNS:.1f}",
+                f"{r['off_dv_dt'] * VNS:.0f} / {r['off_dv_dt_max'] * VNS:.0f}",
                 f"{r['off_vds_peak']:.0f}",
                 f"{r['off_vgs_hs_min']:.2f}",
             ]
@@ -659,11 +858,43 @@ def readme_block(s: Row) -> str:
         ],
     )
     lines += [
-        f"Selected by the rule above (from the swept values): **Rg,on = {rg['rg_on']} Ω, "
-        f"Rg,off = {rg['rg_off']} Ω**.",
+        "Lowest-loss swept values meeting both limits: "
+        + (f"Rg,on = {rg['rg_on']} Ω" if rg["rg_on"] is not None else "Rg,on: none")
+        + ", "
+        + (f"Rg,off = {rg['rg_off']} Ω" if rg["rg_off"] is not None else "Rg,off: none")
+        + " (dv/dt limit applied to the 1 ns peak).",
         "",
     ]
 
+    vg = s["vgs_off"]
+    assert isinstance(vg, list)
+    lines += [
+        "#### False turn-on margin vs off-state gate voltage (both devices, 800 V / 40 A)",
+        "",
+    ]
+    lines += _table(
+        [
+            "Off-state vGS (V)",
+            "Free-wheel vGS peak (V)",
+            f"Margin to VGS(th),min = {lim['vth_min_V']:.2f} V",
+            "Free-wheel vGS min (V)",
+            "Eon (µJ)",
+            "Err (µJ)",
+            "Eoff (µJ)",
+        ],
+        [
+            [
+                f"{r['vgs_off']:g}",
+                f"{r['vgs_hs_max']:.2f}",
+                f"{r['margin']:+.2f} V",
+                f"{r['vgs_hs_min']:.2f}",
+                f"{r['e_on_uJ']:.0f}",
+                f"{r['e_rr_uJ']:.0f}",
+                f"{r['e_off_uJ']:.0f}",
+            ]
+            for r in vg
+        ],
+    )
     sb = s["stray_budget"]
     assert isinstance(sb, dict)
     lines += ["#### Stray-inductance budget (800 V, 40 A, Rg = 4.5 Ω)", ""]
@@ -679,7 +910,7 @@ def readme_block(s: Row) -> str:
                 f"{r['l_nH']:.0f}",
                 f"{r['pk_off']:.0f}",
                 f"{r['pk_on']:.0f}",
-                f"{r['f_ring_MHz']:.0f}",
+                _fmt(r["f_ring_MHz"]),
             ]
             for r in sb["rows"]
         ],
@@ -708,17 +939,9 @@ def readme_block(s: Row) -> str:
             "Eoff (µJ)",
             "Eon + Eoff (µJ)",
             "vs Kelvin",
+            "DUT vGS range (V)",
         ],
-        [
-            [
-                f"{r['l_cs_nH']:.0f}",
-                f"{r['e_on_uJ']:.0f}",
-                f"{r['e_off_uJ']:.0f}",
-                f"{r['e_ts_uJ']:.0f}",
-                f"{r['e_ts_increase_pct']:+.0f} %",
-            ]
-            for r in k["rows"]
-        ],
+        [_kelvin_row(r) for r in k["rows"]],
     )
     lines += [
         "0 nH = driver returned to the power-source pin, so only the package source",
